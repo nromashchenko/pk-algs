@@ -7,14 +7,9 @@
 #include <iomanip>
 #include <cassert>
 
-using score_t = float;
-using code_t = uint64_t;
-using row_t = std::vector<score_t>;
-using matrix_t = std::vector<row_t>;
-using map_t = std::unordered_map<code_t, score_t>;
+#include "common.h"
+#include "dac.h"
 
-const size_t sigma = 4;
-const score_t omega = 1.0;
 
 enum class bb_return
 {
@@ -157,6 +152,10 @@ public:
         if (j == _k - 1 && score > eps)
         {
             map[prefix] = score;
+            /*if (prefix == 16)
+            {
+                std::cout << "16" << std::endl;
+            }*/
             return bb_return::GOOD_KMER;
         }
 
@@ -187,6 +186,7 @@ private:
     size_t _k;
     std::vector<score_t> _best_suffix_score;
 };
+
 
 
 std::random_device rd;
@@ -228,7 +228,7 @@ matrix_t generate(size_t k)
     return a;
 }
 
-void print(const matrix_t& matrix)
+void print_matrix(const matrix_t& matrix)
 {
     for (const auto& row : matrix)
     {
@@ -261,27 +261,67 @@ void assert_equal(const map_t& map1, const map_t& map2)
     }
 }
 
+void test_one(size_t k, bool print=true)
+{
+    const auto matrix = generate(k);
+    if (print)
+    {
+        print_matrix(matrix);
+        std::cout << "Threshold: " << std::pow((omega / 4), k) << std::endl;
+    }
+
+    branch_and_bound bb(matrix, k);
+    bb.run();
+    if (print)
+    {
+        //print_map(bb.get_map());
+        std::cout << "Branch-and-bound, generated: " << bb.get_map().size() << std::endl;
+    }
+
+    divide_and_conquer dc(matrix, k);
+    dc.run();
+    if (print)
+    {
+        //print_map(dc.get_map());
+        std::cout << "Divide-and-conquer, generated: " << dc.get_map().size() << std::endl;
+    }
+
+    brute_force bf(matrix, k);
+    bf.run();
+    if (print)
+    {
+        //print_map(bf.get_map());
+        std::cout << "Brute force, generated: " << bf.get_map().size() << std::endl;
+    }
+
+    assert_equal(bb.get_map(), bf.get_map());
+    assert_equal(dc.get_map(), bf.get_map());
+}
+
+void test_suite()
+{
+    const size_t num_iter = 100;
+    const std::vector<size_t> k_values = { 6, 7, 8, 9 };
+
+    for (const auto k : k_values)
+    {
+        for (size_t i = 0; i < num_iter; ++i)
+        {
+            std::cout << "\rTesting k = " << k << ". " << i << " / " << num_iter << "..." << std::flush;
+            test_one(k, false);
+        }
+        std::cout << "\rTesting k = " << k << ". Done." << std::endl;
+    }
+}
 
 int main()
 {
     srand(42);
 
-    const size_t k = 7;
-    const auto matrix = generate(k);
-    print(matrix);
+    /*{
+        test_one(10);
+    }*/
 
-
-    std::cout << "Threshold: " << std::pow((omega / 4), k) << std::endl;
-
-    branch_and_bound bb(matrix, k);
-    bb.run();
-    // print_map(bb.get_map());
-    std::cout << "Generated: " << bb.get_map().size() << std::endl;
-
-    brute_force bf(matrix, k);
-    bf.run();
-    std::cout << "Generated: " << bf.get_map().size() << std::endl;
-
-    assert_equal(bb.get_map(), bf.get_map());
+    test_suite();
     return 0;
 }
