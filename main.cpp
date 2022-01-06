@@ -6,6 +6,8 @@
 #include <random>
 #include <iomanip>
 #include <cassert>
+#include <chrono>
+#include <fstream>
 
 #include "common.h"
 #include "dac.h"
@@ -252,9 +254,15 @@ void print_map(const map_t& map)
 
 void assert_equal(const map_t& map1, const map_t& map2)
 {
+    /*if (map1.size() != map2.size())
+    {
+        std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
+    }*/
+
     assert(map1.size() == map2.size());
     for (const auto& [kmer, score] : map1)
     {
+
         assert(map2.find(kmer) != map2.end());
 
         assert(fabs(score - map2.at(kmer)) < 1e-6);
@@ -314,14 +322,92 @@ void test_suite()
     }
 }
 
+enum class algorithm
+{
+    bb = 0,
+    dc = 1
+};
+
+struct run_stats
+{
+    algorithm alg;
+    size_t num_kmers;
+    long time;
+    size_t k;
+    score_t omega;
+};
+
+void print_as_csv(const std::vector<run_stats>& stats, const std::string& filename)
+{
+    std::ofstream file(filename);
+    file << "alg,num_kmers,time,k,omega" << std::endl;
+    for (const auto& stat: stats)
+    {
+        const auto& [alg, num_kmers, time, k, omega] = stat;
+
+        if (alg == algorithm::bb)
+            file << "bb";
+        else
+            file << "dc";
+
+        file << "," << num_kmers << "," << time << "," << k << "," << omega << std::endl;
+    }
+    file.close();
+}
+
+void benchmark(size_t num_iter)
+{
+    const std::vector<size_t> k_values = { 6, 7, 8, 9, 10, 11 };
+
+    std::vector<run_stats> stats;
+
+    for (const auto k : k_values)
+    {
+        for (size_t i = 0; i < num_iter; ++i)
+        {
+            std::cout << "\rRunning for k = " << k << ". " << i << " / " << num_iter << "..." << std::flush;
+
+            const auto matrix = generate(k);
+
+            auto begin = std::chrono::steady_clock::now();
+            branch_and_bound bb(matrix, k);
+            bb.run();
+            auto end = std::chrono::steady_clock::now();
+            long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+            stats.push_back({
+                algorithm::bb,
+                bb.get_map().size(), bb_time,
+                k, omega
+            });
+
+            begin = std::chrono::steady_clock::now();
+            divide_and_conquer dc(matrix, k);
+            dc.run();
+            end = std::chrono::steady_clock::now();
+            long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+            stats.push_back({
+                algorithm::dc,
+                dc.get_map().size(), dc_time,
+                k, omega
+            });
+
+            assert_equal(bb.get_map(), dc.get_map());
+        }
+        std::cout << "\rRunning for k = " << k << ". Done." << std::endl;
+    }
+
+    print_as_csv(stats, "stats.csv");
+
+}
+
 int main()
 {
     srand(42);
 
-    /*{
-        test_one(10);
-    }*/
+    //test_one(10);
+    //test_suite();
 
-    test_suite();
+    benchmark(300);
+
     return 0;
 }
