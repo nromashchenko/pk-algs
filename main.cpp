@@ -10,185 +10,9 @@
 #include <fstream>
 
 #include "common.h"
-#include "dac.h"
-
-
-enum class bb_return
-{
-    BAD_PREFIX = 0,
-    GOOD_KMER = 1,
-    GOOD_PRFIX = 2
-};
-
-std::pair<size_t, score_t> max_at(const matrix_t& matrix, size_t column)
-{
-    size_t max_index = 0;
-    score_t max_score = matrix[0][column];
-    for (size_t i = 1; i < matrix.size(); ++i)
-    {
-        if (matrix[i][column] > max_score)
-        {
-            max_score = matrix[i][column];
-            max_index = i;
-        }
-    }
-    return { max_index, max_score };
-}
-
-class brute_force
-{
-public:
-    brute_force(const matrix_t& matrix, size_t k)
-        : _matrix(matrix)
-        , _k(k)
-    {
-    }
-
-    void run()
-    {
-        const score_t eps = std::pow((omega / 4), _k);
-
-        // generate all k-mers
-        for (size_t i = 0; i < sigma; ++i)
-        {
-            bf(i, 0, 0, 1.0, eps);
-        }
-
-        // select ones that have the score > eps
-        map_t new_map;
-        for (const auto& [code, score] : map)
-        {
-            if (score > eps)
-            {
-                new_map[code] = score;
-            }
-        }
-        map = new_map;
-
-    }
-
-    bb_return bf(size_t i, size_t j, code_t prefix, score_t score, score_t eps)
-    {
-        // score = score + _matrix[i][j];
-        score = score * _matrix[i][j];
-        prefix = (prefix << 2) | i;
-
-        if (j == _k - 1)
-        {
-            map[prefix] = score;
-            return bb_return::GOOD_KMER;
-        }
-        else
-        {
-            for (size_t i2 = 0; i2 < sigma; ++i2)
-            {
-                bf(i2, j + 1, prefix, score, eps);
-            }
-            return bb_return::GOOD_PRFIX;
-        }
-    }
-
-    const map_t& get_map()
-    {
-        return map;
-    }
-
-
-private:
-    const matrix_t& _matrix;
-    map_t map;
-    size_t _k;
-};
-
-class branch_and_bound
-{
-public:
-    branch_and_bound(const matrix_t& matrix, size_t k)
-        : _matrix(matrix)
-        , _k(k)
-        , _best_suffix_score()
-    {
-        if (_matrix.empty())
-        {
-            throw std::runtime_error("The matrix is empty.");
-        }
-
-        if (_matrix[0].size() != k)
-        {
-            throw std::runtime_error("The size of the window is not k");
-        }
-        // precalc the scores of the best suffixes
-
-        code_t prefix = 0;
-        //score_t score = 0.0;
-        score_t score = 1.0;
-        for (size_t i = 0; i < _k; ++i)
-        {
-            const auto& [index_best, score_best] = max_at(_matrix, _k - i - 1);
-
-            prefix = (index_best << i * 2) | prefix;
-            //score = score + score_best;
-            score = score * score_best;
-
-            //std::cout << "BEST: " << kmer_score << std::endl;
-            _best_suffix_score.push_back(score);
-        }
-    }
-
-    void run()
-    {
-        const score_t eps = std::pow((omega / 4), _k);
-        //bb(0, 0, 0, 0.0, eps);
-        for (size_t i = 0; i < sigma; ++i)
-        {
-            bb(i, 0, 0, 1.0, eps);
-        }
-    }
-
-    bb_return bb(size_t i, size_t j, code_t prefix, score_t score, score_t eps)
-    {
-        // score = score + _matrix[i][j];
-        score = score * _matrix[i][j];
-        prefix = (prefix << 2) | i;
-
-        if (j == _k - 1 && score > eps)
-        {
-            map[prefix] = score;
-            /*if (prefix == 16)
-            {
-                std::cout << "16" << std::endl;
-            }*/
-            return bb_return::GOOD_KMER;
-        }
-
-        const auto best_suffix = _best_suffix_score[_k - ((j + 1) + 1)];
-        //if (score + best_suffix <= eps)
-        if (score * best_suffix <= eps)
-        {
-            return bb_return::BAD_PREFIX;
-        }
-        else
-        {
-            for (size_t i2 = 0; i2 < sigma; ++i2)
-            {
-                bb(i2, j + 1, prefix, score, eps);
-            }
-            return bb_return::GOOD_PRFIX;
-        }
-    }
-
-    const map_t& get_map()
-    {
-        return map;
-    }
-
-private:
-    const matrix_t& _matrix;
-    map_t map;
-    size_t _k;
-    std::vector<score_t> _best_suffix_score;
-};
-
+#include "dc.h"
+#include "bb.h"
+#include "brute_force.h"
 
 
 std::random_device rd;
@@ -271,6 +95,8 @@ void assert_equal(const map_t& map1, const map_t& map2)
 
 void test_one(size_t k, bool print=true)
 {
+    const auto omega = 1.0;
+
     const auto matrix = generate(k);
     if (print)
     {
@@ -325,7 +151,8 @@ void test_suite()
 enum class algorithm
 {
     bb = 0,
-    dc = 1
+    dc = 1,
+    rappas = 2
 };
 
 struct run_stats
@@ -339,65 +166,93 @@ struct run_stats
 
 void print_as_csv(const std::vector<run_stats>& stats, const std::string& filename)
 {
+    std::cout << "Writing results: " << filename << "...";
+
     std::ofstream file(filename);
     file << "alg,num_kmers,time,k,omega" << std::endl;
     for (const auto& stat: stats)
     {
         const auto& [alg, num_kmers, time, k, omega] = stat;
 
-        if (alg == algorithm::bb)
-            file << "bb";
-        else
-            file << "dc";
-
+        switch (alg)
+        {
+            case algorithm::bb:
+                file << "bb";
+                break;
+            case algorithm::dc:
+                file << "dc";
+                break;
+            case algorithm::rappas:
+                file << "rappas";
+                break;
+        }
         file << "," << num_kmers << "," << time << "," << k << "," << omega << std::endl;
     }
     file.close();
+
+    std::cout << std::endl;
 }
 
-void benchmark(size_t num_iter)
+void benchmark(size_t num_iter, const std::string& filename)
 {
+    //const std::vector<size_t> k_values = { 6, 7, 8, 9, 10, 11 };
     const std::vector<size_t> k_values = { 6, 7, 8, 9, 10, 11 };
+    const std::vector<float> omega_values = { 1.0, 1.5 };
 
     std::vector<run_stats> stats;
 
-    for (const auto k : k_values)
+    for (const auto omega : omega_values)
     {
-        for (size_t i = 0; i < num_iter; ++i)
+        std::cout << "Omega: " << omega << std::endl;
+        for (const auto k : k_values)
         {
-            std::cout << "\rRunning for k = " << k << ". " << i << " / " << num_iter << "..." << std::flush;
+            for (size_t i = 0; i < num_iter; ++i)
+            {
+                std::cout << "\r\tRunning for k = " << k << ". " << i << " / " << num_iter << "..." << std::flush;
 
-            const auto matrix = generate(k);
+                const auto matrix = generate(k);
 
-            auto begin = std::chrono::steady_clock::now();
-            branch_and_bound bb(matrix, k);
-            bb.run();
-            auto end = std::chrono::steady_clock::now();
-            long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-            stats.push_back({
-                algorithm::bb,
-                bb.get_map().size(), bb_time,
-                k, omega
-            });
+                auto begin = std::chrono::steady_clock::now();
+                branch_and_bound bb(matrix, k);
+                bb.run();
+                auto end = std::chrono::steady_clock::now();
+                long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                    algorithm::bb,
+                    bb.get_map().size(), bb_time,
+                    k, omega
+                });
 
-            begin = std::chrono::steady_clock::now();
-            divide_and_conquer dc(matrix, k);
-            dc.run();
-            end = std::chrono::steady_clock::now();
-            long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-            stats.push_back({
-                algorithm::dc,
-                dc.get_map().size(), dc_time,
-                k, omega
-            });
+                begin = std::chrono::steady_clock::now();
+                divide_and_conquer dc(matrix, k);
+                dc.run();
+                end = std::chrono::steady_clock::now();
+                long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                    algorithm::dc,
+                    dc.get_map().size(), dc_time,
+                    k, omega
+                });
 
-            assert_equal(bb.get_map(), dc.get_map());
+                begin = std::chrono::steady_clock::now();
+                rappas rap(matrix, k);
+                rap.run();
+                end = std::chrono::steady_clock::now();
+                long rap_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                        algorithm::rappas,
+                                        rap.get_map().size(), rap_time,
+                                        k, omega
+                                });
+
+                assert_equal(bb.get_map(), dc.get_map());
+                assert_equal(bb.get_map(), rap.get_map());
+            }
+            std::cout << "\r\tRunning for k = " << k << ". Done." << std::endl;
         }
-        std::cout << "\rRunning for k = " << k << ". Done." << std::endl;
     }
 
-    print_as_csv(stats, "stats.csv");
-
+    print_as_csv(stats, filename);
 }
 
 int main()
@@ -407,7 +262,7 @@ int main()
     //test_one(10);
     //test_suite();
 
-    benchmark(300);
+    benchmark(500, std::string(std::tmpnam(nullptr)) + ".csv");
 
     return 0;
 }
