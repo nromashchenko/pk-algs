@@ -1,13 +1,13 @@
 #include <cmath>
 #include "brute_force.h"
 
-brute_force::brute_force(const matrix_t& matrix, size_t k)
+brute_force::brute_force(const matrix& matrix, size_t k)
         : _matrix(matrix)
         , _k(k)
 {
 }
 
-void brute_force::run()
+void brute_force::run(score_t omega)
 {
     const score_t eps = std::pow((omega / 4), _k);
 

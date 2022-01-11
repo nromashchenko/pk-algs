@@ -6,8 +6,7 @@ bool kmer_score_comparator(const phylo_kmer& k1, const phylo_kmer& k2)
     return k1.score > k2.score;
 }
 
-
-std::vector<phylo_kmer> as_column(const matrix_t& matrix, size_t j, score_t eps)
+std::vector<phylo_kmer> as_column(const matrix& matrix, size_t j, score_t eps)
 {
     std::vector<phylo_kmer> column;
     for (size_t i = 0; i < sigma; ++i)
@@ -22,7 +21,7 @@ std::vector<phylo_kmer> as_column(const matrix_t& matrix, size_t j, score_t eps)
 }
 
 
-divide_and_conquer::divide_and_conquer(const matrix_t& matrix, size_t k)
+divide_and_conquer::divide_and_conquer(const matrix& matrix, size_t k)
         : _matrix(matrix)
         , _k(k)
 {
@@ -31,9 +30,9 @@ divide_and_conquer::divide_and_conquer(const matrix_t& matrix, size_t k)
     _prefix_size = (halfsize >= 1) ? halfsize : k;
 }
 
-void divide_and_conquer::run()
+void divide_and_conquer::run(score_t omega)
 {
-    const auto kmers = dc(0, _k);
+    const auto kmers = dc(omega, 0, _k);
 
     for (const auto& [kmer, score] : kmers)
     {
@@ -43,7 +42,7 @@ void divide_and_conquer::run()
 
 // j is the starat position of the window
 // h is the length of the window
-std::vector<phylo_kmer> divide_and_conquer::dc(size_t j, size_t h)
+std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h)
 {
     const score_t eps = std::pow((omega / 4), _k);
 
@@ -55,8 +54,8 @@ std::vector<phylo_kmer> divide_and_conquer::dc(size_t j, size_t h)
     else
     {
         std::vector<phylo_kmer> result;
-        const auto l = dc(j, h / 2);
-        auto r = dc(j + h / 2, h - h / 2);
+        const auto l = dc(omega, j, h / 2);
+        auto r = dc(omega, j + h / 2, h - h / 2);
 
         if (!r.empty())
         {

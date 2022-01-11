@@ -2,7 +2,7 @@
 
 #include "bb.h"
 
-branch_and_bound::branch_and_bound(const matrix_t& matrix, size_t k)
+branch_and_bound::branch_and_bound(const matrix& matrix, size_t k)
         : _matrix(matrix)
         , _k(k)
         , _best_suffix_score()
@@ -23,7 +23,7 @@ branch_and_bound::branch_and_bound(const matrix_t& matrix, size_t k)
     score_t score = 1.0;
     for (size_t i = 0; i < _k; ++i)
     {
-        const auto& [index_best, score_best] = max_at(_matrix, _k - i - 1);
+        const auto& [index_best, score_best] = _matrix.max_at(_k - i - 1);
 
         prefix = (index_best << i * 2) | prefix;
         //score = score + score_best;
@@ -34,7 +34,7 @@ branch_and_bound::branch_and_bound(const matrix_t& matrix, size_t k)
     }
 }
 
-void branch_and_bound::run()
+void branch_and_bound::run(score_t omega)
 {
     const score_t eps = std::pow((omega / 4), _k);
     //bb(0, 0, 0, 0.0, eps);
@@ -83,7 +83,7 @@ const map_t& branch_and_bound::get_map()
 
 
 
-rappas::rappas(const matrix_t& matrix, size_t k)
+rappas::rappas(const matrix& matrix, size_t k)
         : _matrix(matrix)
         , _k(k)
         , _best_suffix_score()
@@ -99,7 +99,7 @@ rappas::rappas(const matrix_t& matrix, size_t k)
     }
 }
 
-void rappas::run()
+void rappas::run(score_t omega)
 {
     const score_t eps = std::pow((omega / 4), _k);
     //bb(0, 0, 0, 0.0, eps);
