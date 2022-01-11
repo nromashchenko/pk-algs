@@ -82,11 +82,9 @@ const map_t& branch_and_bound::get_map()
 }
 
 
-
 rappas::rappas(const matrix& matrix, size_t k)
         : _matrix(matrix)
         , _k(k)
-        , _best_suffix_score()
 {
     if (_matrix.empty())
     {
@@ -101,6 +99,11 @@ rappas::rappas(const matrix& matrix, size_t k)
 
 void rappas::run(score_t omega)
 {
+    if (!_matrix.is_sorted())
+    {
+        throw std::runtime_error("Matrix is not sorted.");
+    }
+
     const score_t eps = std::pow((omega / 4), _k);
     //bb(0, 0, 0, 0.0, eps);
     for (size_t i = 0; i < sigma; ++i)
@@ -113,13 +116,14 @@ bb_return rappas::bb(size_t i, size_t j, code_t prefix, score_t score, score_t e
 {
     // score = score + _matrix[i][j];
     score = score * _matrix[i][j];
-    prefix = (prefix << 2) | i;
+    prefix = (prefix << 2) | _matrix.get_order()[i][j];
 
-    if (score <= eps)
+    /*if (score <= eps)
     {
         return bb_return::BAD_PREFIX;
     }
-    else if (j == _k - 1)
+    else */
+    if (j == _k - 1)
     {
         map[prefix] = score;
         return bb_return::GOOD_KMER;
@@ -128,7 +132,12 @@ bb_return rappas::bb(size_t i, size_t j, code_t prefix, score_t score, score_t e
     {
         for (size_t i2 = 0; i2 < sigma; ++i2)
         {
+            if (score * _matrix[i2][j+1] <= eps)
+            {
+                break;
+            }
             bb(i2, j + 1, prefix, score, eps);
+
         }
         return bb_return::GOOD_PRFIX;
     }

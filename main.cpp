@@ -2,7 +2,6 @@
 #include <unordered_map>
 #include <vector>
 #include <cmath>
-#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <fstream>
@@ -44,7 +43,7 @@ void test_one(size_t k, bool print=true)
 {
     const score_t omega = 1.0;
 
-    const auto matrix = generate(k);
+    auto matrix = generate(k);
     if (print)
     {
         print_matrix(matrix);
@@ -75,8 +74,18 @@ void test_one(size_t k, bool print=true)
         std::cout << "Brute force, generated: " << bf.get_map().size() << std::endl;
     }
 
+    matrix.sort();
+    rappas rap(matrix, k);
+    rap.run(omega);
+    if (print)
+    {
+        //print_map(bb.get_map());
+        std::cout << "Rappas, generated: " << rap.get_map().size() << std::endl;
+    }
+
     assert_equal(bb.get_map(), bf.get_map());
     assert_equal(dc.get_map(), bf.get_map());
+    assert_equal(rap.get_map(), bf.get_map());
 }
 
 void test_suite()
@@ -157,16 +166,20 @@ void benchmark(size_t num_iter, const std::string& filename)
                     { 9, 1.0},
                     { 10, 1.0},
                     { 11, 1.0},
-                    { 12, 1.0},
-                    { 13, 1.0},
+                    //{ 12, 1.0},
+                    //{ 13, 1.0},
 
+                    { 6, 1.25},
                     { 7, 1.25},
                     { 8, 1.25},
                     { 9, 1.25},
                     { 10, 1.25},
                     { 11, 1.25},
                     { 12, 1.25},
+                    { 13, 1.25},
+                    { 14, 1.25},
 
+                    { 6, 1.5},
                     { 7, 1.5},
                     { 8, 1.5},
                     { 9, 1.5},
@@ -174,14 +187,19 @@ void benchmark(size_t num_iter, const std::string& filename)
                     { 11, 1.5},
                     { 12, 1.5},
                     { 13, 1.5},
+                    { 14, 1.5},
 
+                    { 6, 1.75},
                     { 7, 1.75},
                     { 8, 1.75},
                     { 9, 1.75},
                     { 10, 1.75},
                     { 11, 1.75},
                     { 12, 1.75},
+                    { 13, 1.75},
+                    { 14, 1.75},
 
+                    { 6, 2.0},
                     { 7, 2.0},
                     { 8, 2.0},
                     { 9, 2.0},
@@ -200,7 +218,7 @@ void benchmark(size_t num_iter, const std::string& filename)
         {
             std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". " << i << " / " << num_iter << "..." << std::flush;
 
-            const auto matrix = generate(k);
+            auto matrix = generate(k);
 
             auto begin = std::chrono::steady_clock::now();
             branch_and_bound bb(matrix, k);
@@ -223,6 +241,8 @@ void benchmark(size_t num_iter, const std::string& filename)
                 dc.get_map().size(), dc_time,
                 k, omega
             });
+
+            matrix.sort();
 
             begin = std::chrono::steady_clock::now();
             rappas rap(matrix, k);

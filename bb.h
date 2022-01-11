@@ -31,7 +31,6 @@ private:
     const matrix& _matrix;
     map_t map;
     size_t _k;
-    std::vector<score_t> _best_suffix_score;
 };
 
 

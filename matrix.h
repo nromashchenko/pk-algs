@@ -8,7 +8,7 @@ class matrix {
 public:
     using row = std::vector<score_t>;
 
-    matrix(std::vector<row>  d);
+    matrix(std::vector<row> d);
 
     std::vector<score_t> operator[](size_t j) const;
 
@@ -16,12 +16,22 @@ public:
 
     bool empty() const;
 
+    void sort();
+
+    bool is_sorted() const;
+
     [[nodiscard]]
     std::pair<size_t, score_t> max_at(size_t column) const;
 
     std::vector<row> get_data() const;
+
+    std::vector<std::vector<size_t>> get_order() const;
+
 private:
     std::vector<row> data;
+
+    bool sorted;
+    std::vector<std::vector<size_t>> order;
 };
 
 matrix generate(size_t length);
