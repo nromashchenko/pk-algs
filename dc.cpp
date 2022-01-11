@@ -21,6 +21,7 @@ std::vector<phylo_kmer> as_column(const matrix& matrix, size_t j, score_t eps)
 }
 
 
+
 divide_and_conquer::divide_and_conquer(const matrix& matrix, size_t k)
         : _matrix(matrix)
         , _k(k)
