@@ -8,4 +8,4 @@ add_executable(xpas_algs
         common.cpp
         brute_force.cpp
         dc.cpp
-        bb.cpp)
+        bb.cpp matrix.h matrix.cpp)

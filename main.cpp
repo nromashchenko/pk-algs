@@ -3,8 +3,6 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
-#include <random>
-#include <iomanip>
 #include <cassert>
 #include <chrono>
 #include <fstream>
@@ -15,57 +13,6 @@
 #include "brute_force.h"
 
 
-std::random_device rd;
-std::default_random_engine eng(42);
-std::uniform_real_distribution<score_t> distr(0, 1);
-
-score_t g()
-{
-    return distr(eng);
-}
-
-row_t generate_row(size_t k)
-{
-    std::vector<score_t> row(k);
-    std::generate(row.begin(), row.end(), g);
-    return row;
-}
-
-matrix_t generate(size_t k)
-{
-    matrix_t a(sigma);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = generate_row(k);
-    }
-
-    for (size_t j = 0; j < k; ++j)
-    {
-        score_t sum = 0.0;
-        for (const auto& row : a)
-        {
-            sum += row[j];
-        }
-        for (auto& row : a)
-        {
-            row[j] = row[j] / sum;
-        }
-    }
-    return a;
-}
-
-void print_matrix(const matrix_t& matrix)
-{
-    for (const auto& row : matrix)
-    {
-        for (const auto& el : row)
-        {
-            std::cout << std::fixed << std::setprecision(8) << el << "\t";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-}
 
 void print_map(const map_t& map)
 {
@@ -95,7 +42,7 @@ void assert_equal(const map_t& map1, const map_t& map2)
 
 void test_one(size_t k, bool print=true)
 {
-    const auto omega = 1.0;
+    const score_t omega = 1.0;
 
     const auto matrix = generate(k);
     if (print)
@@ -105,7 +52,7 @@ void test_one(size_t k, bool print=true)
     }
 
     branch_and_bound bb(matrix, k);
-    bb.run();
+    bb.run(omega);
     if (print)
     {
         //print_map(bb.get_map());
@@ -113,7 +60,7 @@ void test_one(size_t k, bool print=true)
     }
 
     divide_and_conquer dc(matrix, k);
-    dc.run();
+    dc.run(omega);
     if (print)
     {
         //print_map(dc.get_map());
@@ -121,7 +68,7 @@ void test_one(size_t k, bool print=true)
     }
 
     brute_force bf(matrix, k);
-    bf.run();
+    bf.run(omega);
     if (print)
     {
         //print_map(bf.get_map());
@@ -193,63 +140,105 @@ void print_as_csv(const std::vector<run_stats>& stats, const std::string& filena
     std::cout << std::endl;
 }
 
+struct params
+{
+    size_t k;
+    score_t omega;
+};
+
 void benchmark(size_t num_iter, const std::string& filename)
 {
-    //const std::vector<size_t> k_values = { 6, 7, 8, 9, 10, 11 };
-    const std::vector<size_t> k_values = { 6, 7, 8, 9, 10, 11 };
-    const std::vector<float> omega_values = { 1.0, 1.5 };
+
+    const std::vector<params> params =
+            {
+                    { 6, 1.0},
+                    { 7, 1.0},
+                    { 8, 1.0},
+                    { 9, 1.0},
+                    { 10, 1.0},
+                    { 11, 1.0},
+                    { 12, 1.0},
+                    { 13, 1.0},
+
+                    { 7, 1.25},
+                    { 8, 1.25},
+                    { 9, 1.25},
+                    { 10, 1.25},
+                    { 11, 1.25},
+                    { 12, 1.25},
+
+                    { 7, 1.5},
+                    { 8, 1.5},
+                    { 9, 1.5},
+                    { 10, 1.5},
+                    { 11, 1.5},
+                    { 12, 1.5},
+                    { 13, 1.5},
+
+                    { 7, 1.75},
+                    { 8, 1.75},
+                    { 9, 1.75},
+                    { 10, 1.75},
+                    { 11, 1.75},
+                    { 12, 1.75},
+
+                    { 7, 2.0},
+                    { 8, 2.0},
+                    { 9, 2.0},
+                    { 10, 2.0},
+                    { 11, 2.0},
+                    { 12, 2.0},
+                    { 13, 2.0},
+                    { 14, 2.0},
+            };
 
     std::vector<run_stats> stats;
 
-    for (const auto omega : omega_values)
+    for (const auto& [k, omega] : params)
     {
-        std::cout << "Omega: " << omega << std::endl;
-        for (const auto k : k_values)
+        for (size_t i = 0; i < num_iter; ++i)
         {
-            for (size_t i = 0; i < num_iter; ++i)
-            {
-                std::cout << "\r\tRunning for k = " << k << ". " << i << " / " << num_iter << "..." << std::flush;
+            std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". " << i << " / " << num_iter << "..." << std::flush;
 
-                const auto matrix = generate(k);
+            const auto matrix = generate(k);
 
-                auto begin = std::chrono::steady_clock::now();
-                branch_and_bound bb(matrix, k);
-                bb.run();
-                auto end = std::chrono::steady_clock::now();
-                long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                    algorithm::bb,
-                    bb.get_map().size(), bb_time,
-                    k, omega
-                });
+            auto begin = std::chrono::steady_clock::now();
+            branch_and_bound bb(matrix, k);
+            bb.run(omega);
+            auto end = std::chrono::steady_clock::now();
+            long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+            stats.push_back({
+                algorithm::bb,
+                bb.get_map().size(), bb_time,
+                k, omega
+            });
 
-                begin = std::chrono::steady_clock::now();
-                divide_and_conquer dc(matrix, k);
-                dc.run();
-                end = std::chrono::steady_clock::now();
-                long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                    algorithm::dc,
-                    dc.get_map().size(), dc_time,
-                    k, omega
-                });
+            begin = std::chrono::steady_clock::now();
+            divide_and_conquer dc(matrix, k);
+            dc.run(omega);
+            end = std::chrono::steady_clock::now();
+            long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+            stats.push_back({
+                algorithm::dc,
+                dc.get_map().size(), dc_time,
+                k, omega
+            });
 
-                begin = std::chrono::steady_clock::now();
-                rappas rap(matrix, k);
-                rap.run();
-                end = std::chrono::steady_clock::now();
-                long rap_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                        algorithm::rappas,
-                                        rap.get_map().size(), rap_time,
-                                        k, omega
-                                });
+            begin = std::chrono::steady_clock::now();
+            rappas rap(matrix, k);
+            rap.run(omega);
+            end = std::chrono::steady_clock::now();
+            long rap_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+            stats.push_back({
+                                    algorithm::rappas,
+                                    rap.get_map().size(), rap_time,
+                                    k, omega
+                            });
 
-                assert_equal(bb.get_map(), dc.get_map());
-                assert_equal(bb.get_map(), rap.get_map());
-            }
-            std::cout << "\r\tRunning for k = " << k << ". Done." << std::endl;
+            assert_equal(bb.get_map(), dc.get_map());
+            assert_equal(bb.get_map(), rap.get_map());
         }
+        std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". Done." << std::endl;
     }
 
     print_as_csv(stats, filename);
@@ -262,7 +251,7 @@ int main()
     //test_one(10);
     //test_suite();
 
-    benchmark(500, std::string(std::tmpnam(nullptr)) + ".csv");
+    benchmark(250, std::string(std::tmpnam(nullptr)) + ".csv");
 
     return 0;
 }
