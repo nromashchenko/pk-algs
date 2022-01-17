@@ -2,28 +2,28 @@
 
 #include "bb.h"
 
-branch_and_bound::branch_and_bound(const matrix& matrix, size_t k)
-        : _matrix(matrix)
+branch_and_bound::branch_and_bound(const window& window, size_t k)
+        : _window(window)
         , _k(k)
         , _best_suffix_score()
 {
-    if (_matrix.empty())
+    if (_window.empty())
     {
         throw std::runtime_error("The matrix is empty.");
     }
 
-    if (_matrix[0].size() != k)
+    if (_window.size() != k)
     {
         throw std::runtime_error("The size of the window is not k");
     }
-    // precalc the scores of the best suffixes
 
+    // precalc the scores of the best suffixes
     code_t prefix = 0;
     //score_t score = 0.0;
     score_t score = 1.0;
     for (size_t i = 0; i < _k; ++i)
     {
-        const auto& [index_best, score_best] = _matrix.max_at(_k - i - 1);
+        const auto& [index_best, score_best] = window.max_at(_k - i - 1);
 
         prefix = (index_best << i * 2) | prefix;
         //score = score + score_best;
@@ -47,7 +47,7 @@ void branch_and_bound::run(score_t omega)
 bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score, score_t eps)
 {
     // score = score + _matrix[i][j];
-    score = score * _matrix[i][j];
+    score = score * _window[i][j];
     prefix = (prefix << 2) | i;
 
     if (j == _k - 1 && score > eps)
