@@ -10,8 +10,64 @@
 #include "dc.h"
 #include "bb.h"
 #include "brute_force.h"
+#include "ar.h"
 
 
+struct run_params
+{
+    size_t k;
+    score_t omega;
+};
+
+const std::vector<run_params> params =
+    {
+        { 6, 1.0},
+        { 7, 1.0},
+        { 8, 1.0},
+        { 9, 1.0},
+        { 10, 1.0},
+        //{ 11, 1.0},
+
+        { 6, 1.25},
+        { 7, 1.25},
+        { 8, 1.25},
+        { 9, 1.25},
+        { 10, 1.25},
+        { 11, 1.25},
+        /*{ 12, 1.25},
+        { 13, 1.25},
+        { 14, 1.25},*/
+
+        { 6, 1.5},
+        { 7, 1.5},
+        { 8, 1.5},
+        { 9, 1.5},
+        { 10, 1.5},
+        { 11, 1.5},
+        { 12, 1.5},
+        //{ 13, 1.5},
+        //{ 14, 1.5},
+
+        { 6, 1.75},
+        { 7, 1.75},
+        { 8, 1.75},
+        { 9, 1.75},
+        { 10, 1.75},
+        { 11, 1.75},
+        { 12, 1.75},
+        //{ 13, 1.75},
+        //{ 14, 1.75},
+
+        { 6, 2.0},
+        { 7, 2.0},
+        { 8, 2.0},
+        { 9, 2.0},
+        { 10, 2.0},
+        { 11, 2.0},
+        { 12, 2.0},
+        /*{ 13, 2.0},
+        { 14, 2.0},*/
+    };
 
 void print_map(const map_t& map)
 {
@@ -157,67 +213,8 @@ void print_as_csv(const std::vector<run_stats>& stats, const std::string& filena
     std::cout << std::endl;
 }
 
-struct params
+void test_random(size_t num_iter, const std::string& filename)
 {
-    size_t k;
-    score_t omega;
-};
-
-void benchmark(size_t num_iter, const std::string& filename)
-{
-
-    const std::vector<params> params =
-            {
-                    { 6, 1.0},
-                    { 7, 1.0},
-                    { 8, 1.0},
-                    { 9, 1.0},
-                    { 10, 1.0},
-                    { 11, 1.0},
-                    //{ 12, 1.0},
-                    //{ 13, 1.0},
-
-                    { 6, 1.25},
-                    { 7, 1.25},
-                    { 8, 1.25},
-                    { 9, 1.25},
-                    { 10, 1.25},
-                    { 11, 1.25},
-                    { 12, 1.25},
-                    { 13, 1.25},
-                    { 14, 1.25},
-
-                    { 6, 1.5},
-                    { 7, 1.5},
-                    { 8, 1.5},
-                    { 9, 1.5},
-                    { 10, 1.5},
-                    { 11, 1.5},
-                    { 12, 1.5},
-                    { 13, 1.5},
-                    { 14, 1.5},
-
-                    { 6, 1.75},
-                    { 7, 1.75},
-                    { 8, 1.75},
-                    { 9, 1.75},
-                    { 10, 1.75},
-                    { 11, 1.75},
-                    { 12, 1.75},
-                    { 13, 1.75},
-                    { 14, 1.75},
-
-                    { 6, 2.0},
-                    { 7, 2.0},
-                    { 8, 2.0},
-                    { 9, 2.0},
-                    { 10, 2.0},
-                    { 11, 2.0},
-                    { 12, 2.0},
-                    { 13, 2.0},
-                    { 14, 2.0},
-            };
-
     std::vector<run_stats> stats;
 
     for (const auto& [k, omega] : params)
@@ -278,14 +275,102 @@ void benchmark(size_t num_iter, const std::string& filename)
     print_as_csv(stats, filename);
 }
 
-int main()
+void test_data(const std::string& input, const std::string& output)
+{
+    raxmlng_reader reader(input);
+    auto matrices = reader.read();
+
+    const size_t sample_size = 10;
+    std::unordered_map<std::string, matrix> sample;
+    std::sample(matrices.begin(), matrices.end(), std::inserter(sample, sample.begin()),
+                sample_size, std::mt19937{std::random_device{}()});
+
+    std::vector<run_stats> stats;
+    size_t node_i = 0;
+    for (auto& [node, matrix] : sample)
+    {
+        if (node_i % 1 == 0)
+        {
+            std::cout << "\r\tRunning for node " << node << ", " << node_i << " / " << matrices.size() << "..." << std::flush;
+        }
+
+        for (const auto& [k, omega] : params)
+        {
+            for (const auto& window : to_windows(matrix, k))
+            {
+                auto begin = std::chrono::steady_clock::now();
+                branch_and_bound bb(window, k);
+                bb.run(omega);
+                auto end = std::chrono::steady_clock::now();
+                long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::bb,
+                                    bb.get_map().size(), bb_time,
+                                    k, omega
+                                });
+
+                begin = std::chrono::steady_clock::now();
+                divide_and_conquer dc(window, k);
+                dc.run(omega);
+                end = std::chrono::steady_clock::now();
+                long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::dc,
+                                    dc.get_map().size(), dc_time,
+                                    k, omega
+                                });
+
+                /*
+                matrix.sort();
+
+                begin = std::chrono::steady_clock::now();
+                rappas rap(matrix, k);
+                rap.run(omega);
+                end = std::chrono::steady_clock::now();
+                long rap_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                        algorithm::rappas,
+                                        rap.get_map().size(), rap_time,
+                                        k, omega
+                                });
+                */
+
+                assert_equal(bb.get_map(), dc.get_map());
+                //assert_equal(bb.get_map(), rap.get_map());
+            }
+        }
+
+        if (node_i % 1 == 0)
+        {
+            std::cout << "\r\tRunning for node " << node << ", " << node_i << " / " << matrices.size() << ". Done.\n"
+                      << std::flush;
+        }
+        node_i++;
+    }
+
+    print_as_csv(stats, output);
+}
+
+
+int main(int argc, char** argv)
 {
     srand(42);
 
     //test_one(5);
     //test_suite();
 
-    benchmark(100, std::string(std::tmpnam(nullptr)) + ".csv");
+    //test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+
+    if (argc > 1)
+    {
+        std::string filename = argv[1];
+        test_data(filename, std::string(std::tmpnam(nullptr)) + ".csv");
+    }
+    else
+    {
+        std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
+        std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
+    }
 
     return 0;
 }

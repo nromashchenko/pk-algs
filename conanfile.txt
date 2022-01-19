@@ -1,5 +1,6 @@
 [requires]
  range-v3/0.11.0
+ fast-cpp-csv-parser/cci.20200830
 
 [generators]
 cmake

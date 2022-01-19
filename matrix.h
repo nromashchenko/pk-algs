@@ -8,6 +8,7 @@ class matrix {
 public:
     using row = std::vector<score_t>;
 
+    matrix();
     matrix(std::vector<row> d);
 
     //std::vector<score_t> operator[](size_t j) const;
@@ -26,6 +27,8 @@ public:
     std::pair<size_t, score_t> max_at(size_t column) const;
 
     std::vector<row> get_data() const;
+
+    row& get_row(size_t i);
 
     std::vector<std::vector<size_t>> get_order() const;
 

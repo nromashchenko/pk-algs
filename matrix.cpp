@@ -1,7 +1,6 @@
 #include "matrix.h"
 
 #include <utility>
-#include <random>
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
@@ -16,6 +15,12 @@ std::vector<score_t> get_column(const matrix& matrix, size_t j)
     }
     return column;
 }*/
+
+matrix::matrix()
+    : sorted(false)
+{
+
+}
 
 matrix::matrix(std::vector<row> d)
     : data(std::move(d))
@@ -102,6 +107,11 @@ std::pair<size_t, score_t> matrix::max_at(size_t column) const
 std::vector<matrix::row> matrix::get_data() const
 {
     return data;
+}
+
+matrix::row& matrix::get_row(size_t i)
+{
+    return data[i];
 }
 
 std::vector<std::vector<size_t>> matrix::get_order() const
