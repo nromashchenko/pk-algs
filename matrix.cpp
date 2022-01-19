@@ -1,81 +1,11 @@
 #include "matrix.h"
-#include <range/v3/numeric/accumulate.hpp>
-#include <iostream>
 
-#include <iomanip>
-#include <range/v3/algorithm/for_each.hpp>
-#include "matrix.h"
-
-auto print_elem = [](auto elem){
-    std::cout << std::fixed << std::setprecision(8) << elem << "\t";
-    //std::cout << elem << ' ';
-};
-
-auto print = [](auto rng) {
-    rs::for_each(rng, print_elem);
-    std::cout << std::endl;
-};
-
-auto print2D = [](auto rng) {
-    for (auto r: rng)
-    {
-        print(r);
-    }
-};
-
-matrix::matrix(std::vector<score_t> data, size_t num_cols)
-    : data(std::move(data))
-    , num_cols(num_cols)
-{
-    normalize();
-}
-
-void matrix::normalize()
-{
-    // normalizes a column
-    auto normalize_column = [](auto column)
-    {
-        score_t sum = rs::accumulate(column, 0.0f);
-        print(column);
-        std::cout << "SUM: " << sum << std::endl;
-        return column | vs::transform([sum](score_t v) { return v / sum; });
-    };
-
-    // transposes a matrix
-    auto transpose = [](auto rng) {
-        auto flat = rng | vs::join;
-        int height = rs::distance(rng);
-        int width = rs::distance(flat) / height;
-        auto inner = [=](int i) {
-            return flat | vs::drop(i) | vs::stride(width);
-        };
-        return vs::ints(0,width) | vs::transform(inner);
-    };
-
-    // normalizes a matrix
-    auto normalized =
-        get_columns(0, num_cols)
-        | vs::transform(normalize_column)
-        | vs::transform(transpose)
-        | vs::join
-        | rs::to_vector;
-
-
-    std::vector<score_t> copy;
-    std::copy(normalized.begin(), normalized.end(), std::back_inserter(copy));
-    data = std::move(copy);
-
-    //data = normalized;
-}
-
-/*
 #include <utility>
 #include <random>
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
-
-
+/*
 std::vector<score_t> get_column(const matrix& matrix, size_t j)
 {
     std::vector<score_t> column;
@@ -85,18 +15,22 @@ std::vector<score_t> get_column(const matrix& matrix, size_t j)
         column.push_back(row[j]);
     }
     return column;
-}
+}*/
 
 matrix::matrix(std::vector<row> d)
     : data(std::move(d))
-    , sorted(false)
+      , sorted(false)
 {
 }
 
-
-size_t matrix::size() const
+score_t matrix::get(size_t i, size_t j) const
 {
-    return data.size();
+    return data[i][j];
+}
+
+size_t matrix::width() const
+{
+    return data[0].size();
 }
 
 bool matrix::empty() const
@@ -118,7 +52,7 @@ void matrix::sort()
     for (size_t j = 0; j < data[0].size(); ++j)
     {
         // data are stored in rows, extract the column
-        auto column = get_column(data, j);
+        //auto column = get_column(data, j);
 
         // sort it by score
         struct score_pair
@@ -126,10 +60,11 @@ void matrix::sort()
             score_t score;
             size_t order;
         };
+
         std::vector<score_pair> pairs(sigma);
         for (size_t i = 0; i < sigma; ++i)
         {
-            pairs[i] = { column[i], i };
+            pairs[i] = { get(i, j), i };
         }
 
         auto compare = [](const score_pair& p1, const score_pair& p2) { return p1.score > p2.score; };
@@ -175,64 +110,119 @@ std::vector<std::vector<size_t>> matrix::get_order() const
 }
 
 
-window::window(const matrix& m, size_t start_pos, size_t k)
-    : data(m)
-    , start_pos(start_pos)
-    , k(k)
+window::window(matrix& m, size_t start_pos, size_t size)
+    : _matrix(m), _start_pos(start_pos), _size(size)
 {
-    if (start_pos < m.size())
-    {
-        throw std::runtime_error("Wrong start position of the window: " + std::to_string(start_pos));
-    }
 
-    if (start_pos + k > m.size())
-    {
-        throw std::runtime_error("The window of size " + std::to_string(k) + " does not fit");
-    }
 }
 
+window& window::operator=(const window& other)
+{
+    if (*this != other)
+    {
+        _matrix = other._matrix;
+        _start_pos = other._start_pos;
+        _size = other._size;
+    }
+    return *this;
+}
+
+bool window::operator==(const window& other) const
+{
+    /// FIXME:
+    /// Let us imagine those windows are over the same matrix
+    return _start_pos == other._start_pos && _size == other._size;
+}
+
+bool window::operator!=(const window& other) const
+{
+    return !(*this == other);
+}
+
+score_t window::get(size_t i, size_t j) const
+{
+    return _matrix.get(i, _start_pos + j);
+}
+
+size_t window::size() const
+{
+    return _size;
+}
+
+bool window::empty() const
+{
+    return _size == 0;
+}
+
+size_t window::get_position() const
+{
+    return _start_pos;
+}
 
 std::pair<size_t, score_t> window::max_at(size_t column) const
 {
     size_t max_index = 0;
-
-    size_t pos = start_pos;
-    score_t max_score = data.get_data()[pos][column];
-    for (size_t i = pos + 1; i < start_pos + k; ++i)
+    score_t max_score = get(0, column);
+    for (size_t i = 1; i < sigma; ++i)
     {
-        if (data.get_data()[i][column] > max_score)
+        if (get(i, column) > max_score)
         {
-            max_score = data.get_data()[i][column];
+            max_score = get(i, column);
             max_index = i;
         }
     }
     return { max_index, max_score };
 }
 
-score_t window::get_value(size_t row, size_t column) const
+
+impl::window_iterator::window_iterator(matrix& matrix, size_t kmer_size) noexcept
+    : _matrix(matrix), _window(matrix, 0, kmer_size), _kmer_size(kmer_size), _current_pos(0)
 {
-    return data.get_data()[row][start_pos + column];
 }
 
-
-size_t window::get_order(size_t row, size_t column) const
+impl::window_iterator& impl::window_iterator::operator++()
 {
-    return data.get_order()[row][start_pos + column];
+    _current_pos++;
+    if (_current_pos + _kmer_size < _matrix.width())
+    {
+        _window = window(_matrix, _current_pos, _kmer_size);
+    }
+    else
+    {
+        // end iterator
+        _window = window(_matrix, 0, 0);
+        _kmer_size = 0;
+    }
+    return *this;
 }
 
-std::vector<score_t> window::operator[](size_t row) const
+bool impl::window_iterator::operator==(const window_iterator& rhs) const noexcept
 {
-    return data.get_data()[row];
+    return _window == rhs._window;
 }
 
-size_t window::size() const
+bool impl::window_iterator::operator!=(const window_iterator& rhs) const noexcept
 {
-    return k;
+    return !(*this == rhs);
 }
 
-bool window::empty() const
+impl::window_iterator::reference impl::window_iterator::operator*() noexcept
 {
-    return k == 0;
+    return _window;
+}
+
+to_windows::to_windows(matrix& matrix, size_t kmer_size)
+    : _matrix{ matrix }, _kmer_size{ kmer_size }//, _start_pos{ 0 }
+{}
+
+to_windows::const_iterator to_windows::begin() const
+{
+    return { _matrix, _kmer_size };
+}
+
+to_windows::const_iterator to_windows::end() const noexcept
+{
+    return { _matrix, 0 };
 }
 
 
@@ -270,7 +260,7 @@ matrix generate(size_t length)
             row[j] = row[j] / sum;
         }
     }
-    return matrix(a);
+    return a;
 }
 
 void print_matrix(const matrix& matrix)
@@ -284,37 +274,4 @@ void print_matrix(const matrix& matrix)
         std::cout << std::endl;
     }
     std::cout << std::endl;
-}
-*/
-
-
-score_t g()
-{
-    return distr(eng);
-}
-
-matrix generate(size_t num_cols)
-{
-    // generate rows
-    std::vector<score_t> a(sigma * num_cols);
-    std::generate(a.begin(), a.end(), g);
-
-    // normalize columns
-    matrix m(a, num_cols);
-
-
-    /*for (size_t j = 0; j < length; ++j)
-    {
-        score_t sum = 0.0;
-        for (const auto& row : a)
-        {
-            sum += row[j];
-        }
-        for (auto& row : a)
-        {
-            row[j] = row[j] / sum;
-        }
-    }*/
-
-    return m;
 }

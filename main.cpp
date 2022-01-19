@@ -29,7 +29,10 @@ void assert_equal(const map_t& map1, const map_t& map2)
         std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
     }*/
 
+    // allows one mismatch
+    //assert(fabs(map1.size() - map2.size()) < 2);
     assert(map1.size() == map2.size());
+
     for (const auto& [kmer, score] : map1)
     {
 
@@ -43,49 +46,54 @@ void test_one(size_t k, bool print=true)
 {
     const score_t omega = 1.0;
 
-    auto matrix = generate(k);
+    auto matrix = generate(2 * k);
     if (print)
     {
         print_matrix(matrix);
         std::cout << "Threshold: " << std::pow((omega / 4), k) << std::endl;
     }
 
-    branch_and_bound bb(matrix, k);
-    bb.run(omega);
-    if (print)
+    for (const auto& window : to_windows(matrix, k))
     {
-        //print_map(bb.get_map());
-        std::cout << "Branch-and-bound, generated: " << bb.get_map().size() << std::endl;
+        //std::cout << "WINDOW: " << window.get_position() << std::endl;
+        branch_and_bound bb(window, k);
+        bb.run(omega);
+        if (print)
+        {
+            //print_map(bb.get_map());
+            std::cout << "Branch-and-bound, generated: " << bb.get_map().size() << std::endl;
+        }
+
+        divide_and_conquer dc(window, k);
+        dc.run(omega);
+        if (print)
+        {
+            //print_map(dc.get_map());
+            std::cout << "Divide-and-conquer, generated: " << dc.get_map().size() << std::endl;
+        }
+
+        brute_force bf(window, k);
+        bf.run(omega);
+        if (print)
+        {
+            //print_map(bf.get_map());
+            std::cout << "Brute force, generated: " << bf.get_map().size() << std::endl;
+        }
+
+        matrix.sort();
+        /*rappas rap(matrix, k);
+        rap.run(omega);
+        if (print)
+        {
+            //print_map(bb.get_map());
+            std::cout << "Rappas, generated: " << rap.get_map().size() << std::endl;
+        }*/
+
+        assert_equal(bb.get_map(), bf.get_map());
+        assert_equal(dc.get_map(), bf.get_map());
+        //assert_equal(rap.get_map(), bf.get_map());
     }
 
-    divide_and_conquer dc(matrix, k);
-    dc.run(omega);
-    if (print)
-    {
-        //print_map(dc.get_map());
-        std::cout << "Divide-and-conquer, generated: " << dc.get_map().size() << std::endl;
-    }
-
-    brute_force bf(matrix, k);
-    bf.run(omega);
-    if (print)
-    {
-        //print_map(bf.get_map());
-        std::cout << "Brute force, generated: " << bf.get_map().size() << std::endl;
-    }
-
-    matrix.sort();
-    rappas rap(matrix, k);
-    rap.run(omega);
-    if (print)
-    {
-        //print_map(bb.get_map());
-        std::cout << "Rappas, generated: " << rap.get_map().size() << std::endl;
-    }
-
-    assert_equal(bb.get_map(), bf.get_map());
-    assert_equal(dc.get_map(), bf.get_map());
-    assert_equal(rap.get_map(), bf.get_map());
 }
 
 void test_suite()
@@ -218,45 +226,51 @@ void benchmark(size_t num_iter, const std::string& filename)
         {
             std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". " << i << " / " << num_iter << "..." << std::flush;
 
-            auto matrix = generate(k);
+            auto matrix = generate(5 * k);
 
-            auto begin = std::chrono::steady_clock::now();
-            branch_and_bound bb(matrix, k);
-            bb.run(omega);
-            auto end = std::chrono::steady_clock::now();
-            long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-            stats.push_back({
-                algorithm::bb,
-                bb.get_map().size(), bb_time,
-                k, omega
-            });
 
-            begin = std::chrono::steady_clock::now();
-            divide_and_conquer dc(matrix, k);
-            dc.run(omega);
-            end = std::chrono::steady_clock::now();
-            long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-            stats.push_back({
-                algorithm::dc,
-                dc.get_map().size(), dc_time,
-                k, omega
-            });
-
-            matrix.sort();
-
-            begin = std::chrono::steady_clock::now();
-            rappas rap(matrix, k);
-            rap.run(omega);
-            end = std::chrono::steady_clock::now();
-            long rap_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-            stats.push_back({
-                                    algorithm::rappas,
-                                    rap.get_map().size(), rap_time,
+            for (const auto& window : to_windows(matrix, k))
+            {
+                auto begin = std::chrono::steady_clock::now();
+                branch_and_bound bb(window, k);
+                bb.run(omega);
+                auto end = std::chrono::steady_clock::now();
+                long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::bb,
+                                    bb.get_map().size(), bb_time,
                                     k, omega
-                            });
+                                });
 
-            assert_equal(bb.get_map(), dc.get_map());
-            assert_equal(bb.get_map(), rap.get_map());
+                begin = std::chrono::steady_clock::now();
+                divide_and_conquer dc(window, k);
+                dc.run(omega);
+                end = std::chrono::steady_clock::now();
+                long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::dc,
+                                    dc.get_map().size(), dc_time,
+                                    k, omega
+                                });
+
+                /*
+                matrix.sort();
+
+                begin = std::chrono::steady_clock::now();
+                rappas rap(matrix, k);
+                rap.run(omega);
+                end = std::chrono::steady_clock::now();
+                long rap_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                        algorithm::rappas,
+                                        rap.get_map().size(), rap_time,
+                                        k, omega
+                                });
+                */
+
+                assert_equal(bb.get_map(), dc.get_map());
+                //assert_equal(bb.get_map(), rap.get_map());
+            }
         }
         std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". Done." << std::endl;
     }
@@ -268,10 +282,10 @@ int main()
 {
     srand(42);
 
-    //test_one(10);
+    //test_one(5);
     //test_suite();
 
-    benchmark(250, std::string(std::tmpnam(nullptr)) + ".csv");
+    benchmark(100, std::string(std::tmpnam(nullptr)) + ".csv");
 
     return 0;
 }
