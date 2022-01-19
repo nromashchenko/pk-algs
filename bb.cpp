@@ -47,17 +47,20 @@ void branch_and_bound::run(score_t omega)
 bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score, score_t eps)
 {
     // score = score + _matrix[i][j];
-    score = score * _window[i][j];
+    score = score * _window.get(i, j);
     prefix = (prefix << 2) | i;
 
-    if (j == _k - 1 && score > eps)
+    if (j == _k - 1)
     {
-        map[prefix] = score;
-        /*if (prefix == 16)
+        if (score > eps)
         {
-            std::cout << "16" << std::endl;
-        }*/
-        return bb_return::GOOD_KMER;
+            map[prefix] = score;
+            return bb_return::GOOD_KMER;
+        }
+        else
+        {
+            return bb_return::BAD_PREFIX;
+        }
     }
 
     const auto best_suffix = _best_suffix_score[_k - ((j + 1) + 1)];
@@ -81,7 +84,7 @@ const map_t& branch_and_bound::get_map()
     return map;
 }
 
-
+/*
 rappas::rappas(const matrix& matrix, size_t k)
         : _matrix(matrix)
         , _k(k)
@@ -118,11 +121,6 @@ bb_return rappas::bb(size_t i, size_t j, code_t prefix, score_t score, score_t e
     score = score * _matrix[i][j];
     prefix = (prefix << 2) | _matrix.get_order()[i][j];
 
-    /*if (score <= eps)
-    {
-        return bb_return::BAD_PREFIX;
-    }
-    else */
     if (j == _k - 1)
     {
         map[prefix] = score;
@@ -147,3 +145,4 @@ const map_t& rappas::get_map()
 {
     return map;
 }
+*/

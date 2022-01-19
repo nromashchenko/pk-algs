@@ -15,13 +15,13 @@ struct phylo_kmer
 class divide_and_conquer
 {
 public:
-    divide_and_conquer(const matrix& matrix, size_t k);
+    divide_and_conquer(const window& window, size_t k);
     void run(score_t omega);
     std::vector<phylo_kmer> dc(score_t omega, size_t j, size_t h);
     const map_t& get_map();
 
 private:
-    const matrix& _matrix;
+    const window& _window;
     map_t map;
     size_t _k;
     size_t _prefix_size;

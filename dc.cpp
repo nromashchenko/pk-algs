@@ -6,15 +6,15 @@ bool kmer_score_comparator(const phylo_kmer& k1, const phylo_kmer& k2)
     return k1.score > k2.score;
 }
 
-std::vector<phylo_kmer> as_column(const matrix& matrix, size_t j, score_t eps)
+std::vector<phylo_kmer> as_column(const window& window, size_t j, score_t eps)
 {
     std::vector<phylo_kmer> column;
     for (size_t i = 0; i < sigma; ++i)
     {
-        const auto& row = matrix[i];
-        if (row[j] > eps)
+        const auto& element = window.get(i, j);
+        if (element > eps)
         {
-            column.push_back({i, row[j] });
+            column.push_back({i, element });
         }
     }
     return column;
@@ -22,8 +22,8 @@ std::vector<phylo_kmer> as_column(const matrix& matrix, size_t j, score_t eps)
 
 
 
-divide_and_conquer::divide_and_conquer(const matrix& matrix, size_t k)
-        : _matrix(matrix)
+divide_and_conquer::divide_and_conquer(const window& window, size_t k)
+        : _window(window)
         , _k(k)
 {
     /// kmer_size can also be zero, which means the end() iterator
@@ -50,7 +50,7 @@ std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h
     // trivial case
     if (h == 1)
     {
-        return as_column(_matrix, j, eps);
+        return as_column(_window, j, eps);
     }
     else
     {
