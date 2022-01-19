@@ -62,6 +62,7 @@ std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h
         {
             std::sort(r.begin(), r.end(), kmer_score_comparator);
 
+            /*
             for (const auto& [prefix, prefix_score] : l)
             {
                 for (const auto& [suffix, suffix_score] : r)
@@ -76,7 +77,7 @@ std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h
                     }
                     result.push_back({ kmer, score });
                 }
-            }
+            }*/
         }
         return result;
     }
