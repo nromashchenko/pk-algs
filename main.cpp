@@ -34,8 +34,8 @@ const std::vector<run_params> params =
         { 9, 1.25},
         { 10, 1.25},
         { 11, 1.25},
-        /*{ 12, 1.25},
-        { 13, 1.25},
+        { 12, 1.25},
+        /*{ 13, 1.25},
         { 14, 1.25},*/
 
         { 6, 1.5},
@@ -359,8 +359,9 @@ int main(int argc, char** argv)
     //test_one(5);
     //test_suite();
 
-    //test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+    test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
 
+    /*
     if (argc > 1)
     {
         std::string filename = argv[1];
@@ -370,7 +371,7 @@ int main(int argc, char** argv)
     {
         std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
         std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
-    }
+    }*/
 
     return 0;
 }
