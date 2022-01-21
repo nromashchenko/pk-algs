@@ -12,11 +12,13 @@ public:
     bb_return bb(size_t i, size_t j, code_t prefix, score_t score, score_t eps);
     const map_t& get_map();
 
+    std::vector<bb_return> get_returns() const;
 private:
     const window& _window;
     map_t map;
     size_t _k;
     std::vector<score_t> _best_suffix_score;
+    std::vector<bb_return> _returns;
 };
 /*
 class rappas
