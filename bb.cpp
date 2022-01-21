@@ -17,13 +17,19 @@ branch_and_bound::branch_and_bound(const window& window, size_t k)
         throw std::runtime_error("The size of the window is not k");
     }
 
+    map.reserve(1000000);
+
+}
+
+void branch_and_bound::run(score_t omega)
+{
     // precalc the scores of the best suffixes
     code_t prefix = 0;
     //score_t score = 0.0;
     score_t score = 1.0;
     for (size_t i = 0; i < _k; ++i)
     {
-        const auto& [index_best, score_best] = window.max_at(_k - i - 1);
+        const auto& [index_best, score_best] = _window.max_at(_k - i - 1);
 
         prefix = (index_best << i * 2) | prefix;
         //score = score + score_best;
@@ -32,10 +38,7 @@ branch_and_bound::branch_and_bound(const window& window, size_t k)
         //std::cout << "BEST: " << kmer_score << std::endl;
         _best_suffix_score.push_back(score);
     }
-}
 
-void branch_and_bound::run(score_t omega)
-{
     const score_t eps = std::pow((omega / 4), _k);
     //bb(0, 0, 0, 0.0, eps);
     for (size_t i = 0; i < sigma; ++i)
@@ -55,11 +58,13 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
         if (score > eps)
         {
             map[prefix] = score;
-            return bb_return::GOOD_KMER;
+            _returns.push_back(bb_return::GOOD_KMER);
+            return _returns.back();
         }
         else
         {
-            return bb_return::BAD_PREFIX;
+            _returns.push_back(bb_return::BAD_PREFIX);
+            return _returns.back();
         }
     }
 
@@ -67,7 +72,8 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
     //if (score + best_suffix <= eps)
     if (score * best_suffix <= eps)
     {
-        return bb_return::BAD_PREFIX;
+        _returns.push_back(bb_return::BAD_PREFIX);
+        return _returns.back();
     }
     else
     {
@@ -75,7 +81,9 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
         {
             bb(i2, j + 1, prefix, score, eps);
         }
-        return bb_return::GOOD_PRFIX;
+        _returns.push_back(bb_return::GOOD_PRFIX);
+        return _returns.back();
+        //return bb_return::GOOD_PRFIX;
     }
 }
 
@@ -84,6 +92,10 @@ const map_t& branch_and_bound::get_map()
     return map;
 }
 
+std::vector<bb_return> branch_and_bound::get_returns() const
+{
+    return _returns;
+}
 /*
 rappas::rappas(const matrix& matrix, size_t k)
         : _matrix(matrix)

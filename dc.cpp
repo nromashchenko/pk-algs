@@ -29,6 +29,8 @@ divide_and_conquer::divide_and_conquer(const window& window, size_t k)
     /// kmer_size can also be zero, which means the end() iterator
     const auto halfsize = size_t{ k / 2 };
     _prefix_size = (halfsize >= 1) ? halfsize : k;
+
+    map.reserve(1000000);
 }
 
 void divide_and_conquer::run(score_t omega)
@@ -62,7 +64,6 @@ std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h
         {
             std::sort(r.begin(), r.end(), kmer_score_comparator);
 
-            /*
             for (const auto& [prefix, prefix_score] : l)
             {
                 for (const auto& [suffix, suffix_score] : r)
@@ -77,7 +78,7 @@ std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h
                     }
                     result.push_back({ kmer, score });
                 }
-            }*/
+            }
         }
         return result;
     }

@@ -35,8 +35,8 @@ const std::vector<run_params> params =
         { 10, 1.25},
         { 11, 1.25},
         { 12, 1.25},
-        /*{ 13, 1.25},
-        { 14, 1.25},*/
+        //{ 13, 1.25},
+        //{ 14, 1.25},
 
         { 6, 1.5},
         { 7, 1.5},
@@ -65,8 +65,9 @@ const std::vector<run_params> params =
         { 10, 2.0},
         { 11, 2.0},
         { 12, 2.0},
-        /*{ 13, 2.0},
-        { 14, 2.0},*/
+        //{ 13, 2.0},
+        //{ 14, 2.0},
+
     };
 
 void print_map(const map_t& map)
@@ -213,9 +214,50 @@ void print_as_csv(const std::vector<run_stats>& stats, const std::string& filena
     std::cout << std::endl;
 }
 
+struct bb_stats
+{
+    size_t k;
+    score_t omega;
+    std::vector<bb_return> returns;
+};
+
+
+void print_returns(const std::vector<bb_stats>& stats, const std::string& filename)
+{
+    std::cout << "Writing results: " << filename << "...";
+
+    std::ofstream file(filename);
+    for (const auto& [k, omega, stat]: stats)
+    {
+        file << k << "," << omega << ",";
+        for (const auto& ret : stat)
+        {
+            switch (ret)
+            {
+                case bb_return::BAD_PREFIX:
+                    file << 0;
+                    break;
+                case bb_return::GOOD_KMER:
+                    file << 1;
+                    break;
+                case bb_return::GOOD_PRFIX:
+                    file << 2;
+                    break;
+            }
+            //file << ",";
+        }
+        file << std::endl;
+    }
+    file.close();
+
+    std::cout << std::endl;
+}
+
+
 void test_random(size_t num_iter, const std::string& filename)
 {
     std::vector<run_stats> stats;
+    std::vector<bb_stats> bb_stats;
 
     for (const auto& [k, omega] : params)
     {
@@ -228,8 +270,9 @@ void test_random(size_t num_iter, const std::string& filename)
 
             for (const auto& window : to_windows(matrix, k))
             {
-                auto begin = std::chrono::steady_clock::now();
+
                 branch_and_bound bb(window, k);
+                auto begin = std::chrono::steady_clock::now();
                 bb.run(omega);
                 auto end = std::chrono::steady_clock::now();
                 long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
@@ -238,9 +281,11 @@ void test_random(size_t num_iter, const std::string& filename)
                                     bb.get_map().size(), bb_time,
                                     k, omega
                                 });
+                bb_stats.push_back({ k, omega, bb.get_returns()});
 
-                begin = std::chrono::steady_clock::now();
+
                 divide_and_conquer dc(window, k);
+                begin = std::chrono::steady_clock::now();
                 dc.run(omega);
                 end = std::chrono::steady_clock::now();
                 long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
@@ -273,6 +318,7 @@ void test_random(size_t num_iter, const std::string& filename)
     }
 
     print_as_csv(stats, filename);
+    print_returns(bb_stats, "returns.txt");
 }
 
 void test_data(const std::string& input, const std::string& output)
@@ -308,7 +354,7 @@ void test_data(const std::string& input, const std::string& output)
                                     bb.get_map().size(), bb_time,
                                     k, omega
                                 });
-
+/*
                 begin = std::chrono::steady_clock::now();
                 divide_and_conquer dc(window, k);
                 dc.run(omega);
@@ -319,6 +365,7 @@ void test_data(const std::string& input, const std::string& output)
                                     dc.get_map().size(), dc_time,
                                     k, omega
                                 });
+*/
 
                 /*
                 matrix.sort();
@@ -335,7 +382,7 @@ void test_data(const std::string& input, const std::string& output)
                                 });
                 */
 
-                assert_equal(bb.get_map(), dc.get_map());
+                //assert_equal(bb.get_map(), dc.get_map());
                 //assert_equal(bb.get_map(), rap.get_map());
             }
         }
