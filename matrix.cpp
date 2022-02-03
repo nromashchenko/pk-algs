@@ -17,25 +17,25 @@ std::vector<score_t> get_column(const matrix& matrix, size_t j)
 }*/
 
 matrix::matrix()
-    : sorted(false)
+    //: sorted(false)
 {
 
 }
 
-matrix::matrix(std::vector<row> d)
+matrix::matrix(std::vector<column> d)
     : data(std::move(d))
-      , sorted(false)
+    //  , sorted(false)
 {
 }
 
 score_t matrix::get(size_t i, size_t j) const
 {
-    return data[i][j];
+    return data[j][i];
 }
 
 size_t matrix::width() const
 {
-    return data[0].size();
+    return data.size();
 }
 
 bool matrix::empty() const
@@ -45,22 +45,24 @@ bool matrix::empty() const
 
 void matrix::sort()
 {
+    /*
     sorted = true;
 
     if (order.empty())
     {
-        const size_t length = data[0].size();
+        const size_t length = data.size();
         order = { sigma, std::vector<size_t>(length, sigma + 1)};
-    }
+    }*/
 
 
-    for (size_t j = 0; j < data[0].size(); ++j)
+    for (size_t j = 0; j < data.size(); ++j)
     {
         // data are stored in rows, extract the column
         //auto column = get_column(data, j);
+        const auto& column = data[j];
 
         // sort it by score
-        struct score_pair
+        /*struct score_pair
         {
             score_t score;
             size_t order;
@@ -75,19 +77,21 @@ void matrix::sort()
         auto compare = [](const score_pair& p1, const score_pair& p2) { return p1.score > p2.score; };
         std::sort(begin(pairs), end(pairs), compare);
 
+
         // save the sorting
         for (size_t i = 0; i < sigma; ++i)
         {
             data[i][j] = pairs[i].score;
             order[i][j] = pairs[i].order;
         }
+        */
     }
 }
-
+/*
 bool matrix::is_sorted() const
 {
     return sorted;
-}
+}*/
 
 std::pair<size_t, score_t> matrix::max_at(size_t column) const
 {
@@ -104,12 +108,18 @@ std::pair<size_t, score_t> matrix::max_at(size_t column) const
     return { max_index, max_score };
 }
 
-std::vector<matrix::row> matrix::get_data() const
+const std::vector<matrix::column>& matrix::get_data() const
 {
     return data;
 }
 
-matrix::row& matrix::get_row(size_t i)
+std::vector<matrix::column>& matrix::get_data()
+{
+    return data;
+}
+
+/*
+matrix::column& matrix::get_row(size_t i)
 {
     return data[i];
 }
@@ -117,7 +127,7 @@ matrix::row& matrix::get_row(size_t i)
 std::vector<std::vector<size_t>> matrix::get_order() const
 {
     return order;
-}
+}*/
 
 
 window::window(matrix& m, size_t start_pos, size_t size)
@@ -241,33 +251,29 @@ score_t g()
     return distr(eng);
 }
 
-matrix::row generate_row(size_t k)
+matrix::column generate_column(size_t sigma)
 {
-    std::vector<score_t> row(k);
-    std::generate(row.begin(), row.end(), g);
-    return row;
+    std::vector<score_t> column(sigma);
+    std::generate(column.begin(), column.end(), g);
+    return column;
 }
 
 matrix generate(size_t length)
 {
-    // generate rows
-    std::vector<matrix::row> a(sigma);
-    for (auto& row : a)
+    // generate columns
+    std::vector<matrix::column> a(length);
+    for (auto& column : a)
     {
-        row = generate_row(length);
+        column = generate_column(sigma);
     }
 
     // normalize columns
-    for (size_t j = 0; j < length; ++j)
+    for (auto& column : a)
     {
-        score_t sum = 0.0;
-        for (const auto& row : a)
+        score_t sum = std::accumulate(column.begin(), column.end(), 0.0f);
+        for (auto& elem : column)
         {
-            sum += row[j];
-        }
-        for (auto& row : a)
-        {
-            row[j] = row[j] / sum;
+            elem /= sum;
         }
     }
     return a;
@@ -275,9 +281,9 @@ matrix generate(size_t length)
 
 void print_matrix(const matrix& matrix)
 {
-    for (const auto& row : matrix.get_data())
+    for (const auto& column : matrix.get_data())
     {
-        for (const auto& el : row)
+        for (const auto& el : column)
         {
             std::cout << std::fixed << std::setprecision(8) << el << "\t";
         }

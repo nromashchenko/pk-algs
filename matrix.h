@@ -6,10 +6,10 @@
 
 class matrix {
 public:
-    using row = std::vector<score_t>;
+    using column = std::vector<score_t>;
 
     matrix();
-    matrix(std::vector<row> d);
+    matrix(std::vector<column> d);
 
     //std::vector<score_t> operator[](size_t j) const;
 
@@ -21,22 +21,26 @@ public:
 
     void sort();
 
-    bool is_sorted() const;
+    //bool is_sorted() const;
 
     [[nodiscard]]
     std::pair<size_t, score_t> max_at(size_t column) const;
 
-    std::vector<row> get_data() const;
+    const std::vector<column>& get_data() const;
 
-    row& get_row(size_t i);
+    std::vector<column>& get_data();
 
-    std::vector<std::vector<size_t>> get_order() const;
+    //column& get_row(size_t i);
+
+    //column& get_column(size_t j);
+
+    //std::vector<std::vector<size_t>> get_order() const;
 
 private:
-    std::vector<row> data;
+    std::vector<column> data;
 
-    bool sorted;
-    std::vector<std::vector<size_t>> order;
+    //bool sorted;
+    //std::vector<std::vector<size_t>> order;
 };
 
 class window
@@ -60,16 +64,17 @@ public:
 
     size_t get_position() const;
 
+    /*
     void sort();
 
     bool is_sorted() const;
-
+*/
     [[nodiscard]]
     std::pair<size_t, score_t> max_at(size_t column) const;
 
-    std::vector<matrix::row> get_data() const;
+    std::vector<matrix::column> get_data() const;
 
-    std::vector<std::vector<size_t>> get_order() const;
+    /*std::vector<std::vector<size_t>> get_order() const;*/
 
 private:
     matrix& _matrix;

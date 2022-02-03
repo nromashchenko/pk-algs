@@ -27,7 +27,7 @@ ar_result raxmlng_reader::read()
 ar_result raxmlng_reader::read_matrix()
 {
     // column-based
-    std::unordered_map<std::string, std::vector<matrix::row>> temp;
+    ar_result result;
 
     ::io::CSVReader<5,
             ::io::trim_chars<' '>,
@@ -42,27 +42,7 @@ ar_result raxmlng_reader::read_matrix()
         while (_in.read_row(node_label, a, c, g, t))
         {
             auto new_column = std::vector<score_t>{ a, c, g, t };
-
-            temp[node_label].push_back(new_column);
-        }
-
-        // row-based
-        ar_result result;
-        for (const auto& [node, matrix] : temp)
-        {
-            if (auto it = result.find(node); it == std::end(result))
-            {
-                result[node] = std::vector<matrix::row>(sigma);
-            }
-
-            for (const auto& column : matrix)
-            {
-                for (size_t i = 0; i < column.size(); ++i)
-                {
-                    auto& row = result[node].get_row(i);
-                    row.push_back(column[i]);
-                }
-            }
+            result[node_label].get_data().push_back(new_column);
         }
 
         return result;
