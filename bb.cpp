@@ -2,8 +2,9 @@
 
 #include "bb.h"
 
-branch_and_bound::branch_and_bound(const window& window, size_t k)
+branch_and_bound::branch_and_bound(map_t& map, const window& window, size_t k)
         : _window(window)
+        , _map(map)
         , _k(k)
         , _best_suffix_score()
 {
@@ -16,9 +17,6 @@ branch_and_bound::branch_and_bound(const window& window, size_t k)
     {
         throw std::runtime_error("The size of the window is not k");
     }
-
-    map.reserve(1000000);
-
 }
 
 void branch_and_bound::run(score_t omega)
@@ -57,14 +55,16 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
     {
         if (score > eps)
         {
-            map[prefix] = score;
-            _returns.push_back(bb_return::GOOD_KMER);
-            return _returns.back();
+            _map[prefix] = score;
+            //_returns.push_back(bb_return::GOOD_KMER);
+            //return _returns.back();
+            return bb_return::GOOD_KMER;
         }
         else
         {
             _returns.push_back(bb_return::BAD_PREFIX);
             return _returns.back();
+            return bb_return::BAD_PREFIX;
         }
     }
 
@@ -72,8 +72,9 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
     //if (score + best_suffix <= eps)
     if (score * best_suffix <= eps)
     {
-        _returns.push_back(bb_return::BAD_PREFIX);
-        return _returns.back();
+        //_returns.push_back(bb_return::BAD_PREFIX);
+        //return _returns.back();
+        return bb_return::BAD_PREFIX;
     }
     else
     {
@@ -81,15 +82,15 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
         {
             bb(i2, j + 1, prefix, score, eps);
         }
-        _returns.push_back(bb_return::GOOD_PRFIX);
-        return _returns.back();
-        //return bb_return::GOOD_PRFIX;
+        //_returns.push_back(bb_return::GOOD_PRFIX);
+        //return _returns.back();
+        return bb_return::GOOD_PRFIX;
     }
 }
 
 const map_t& branch_and_bound::get_map()
 {
-    return map;
+    return _map;
 }
 
 std::vector<bb_return> branch_and_bound::get_returns() const

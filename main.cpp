@@ -66,9 +66,21 @@ const std::vector<run_params> params =
         { 11, 2.0},
         { 12, 2.0},
         //{ 13, 2.0},
-        //{ 14, 2.0},
+        //{ 14, 2.0},*/
 
     };
+
+const size_t const_k = 10;
+//const size_t const_k = 5;
+const std::vector<run_params> params_one_k =
+{
+    { const_k, 1.0},
+    /*{ const_k, 1.25},
+    { const_k, 1.5},
+    { const_k, 1.75},
+    { const_k, 2.0},*/
+};
+
 
 void print_map(const map_t& map)
 {
@@ -81,10 +93,10 @@ void print_map(const map_t& map)
 
 void assert_equal(const map_t& map1, const map_t& map2)
 {
-    /*if (map1.size() != map2.size())
+    if (map1.size() != map2.size())
     {
         std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
-    }*/
+    }
 
     // allows one mismatch
     //assert(fabs(map1.size() - map2.size()) < 2);
@@ -99,6 +111,7 @@ void assert_equal(const map_t& map1, const map_t& map2)
     }
 }
 
+/*
 void test_one(size_t k, bool print=true)
 {
     const score_t omega = 1.0;
@@ -138,13 +151,6 @@ void test_one(size_t k, bool print=true)
         }
 
         matrix.sort();
-        /*rappas rap(matrix, k);
-        rap.run(omega);
-        if (print)
-        {
-            //print_map(bb.get_map());
-            std::cout << "Rappas, generated: " << rap.get_map().size() << std::endl;
-        }*/
 
         assert_equal(bb.get_map(), bf.get_map());
         assert_equal(dc.get_map(), bf.get_map());
@@ -168,6 +174,7 @@ void test_suite()
         std::cout << "\rTesting k = " << k << ". Done." << std::endl;
     }
 }
+*/
 
 enum class algorithm
 {
@@ -259,19 +266,24 @@ void test_random(size_t num_iter, const std::string& filename)
     std::vector<run_stats> stats;
     std::vector<bb_stats> bb_stats;
 
-    for (const auto& [k, omega] : params)
+    const auto parameters = params;
+    //const auto parameters = params_one_k;
+    for (const auto& [k, omega] : parameters)
     {
         for (size_t i = 0; i < num_iter; ++i)
         {
             std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". " << i << " / " << num_iter << "..." << std::flush;
+
+            map_t map;
+            map.reserve(std::pow(sigma, k));
 
             auto matrix = generate(5 * k);
 
 
             for (const auto& window : to_windows(matrix, k))
             {
-
-                branch_and_bound bb(window, k);
+                //map.clear();
+                branch_and_bound bb(map, window, k);
                 auto begin = std::chrono::steady_clock::now();
                 bb.run(omega);
                 auto end = std::chrono::steady_clock::now();
@@ -284,7 +296,8 @@ void test_random(size_t num_iter, const std::string& filename)
                 bb_stats.push_back({ k, omega, bb.get_returns()});
 
 
-                divide_and_conquer dc(window, k);
+                //map.clear();
+                divide_and_conquer dc(map, window, k);
                 begin = std::chrono::steady_clock::now();
                 dc.run(omega);
                 end = std::chrono::steady_clock::now();
@@ -294,22 +307,6 @@ void test_random(size_t num_iter, const std::string& filename)
                                     dc.get_map().size(), dc_time,
                                     k, omega
                                 });
-
-                /*
-                matrix.sort();
-
-                begin = std::chrono::steady_clock::now();
-                rappas rap(matrix, k);
-                rap.run(omega);
-                end = std::chrono::steady_clock::now();
-                long rap_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                        algorithm::rappas,
-                                        rap.get_map().size(), rap_time,
-                                        k, omega
-                                });
-                */
-
                 assert_equal(bb.get_map(), dc.get_map());
                 //assert_equal(bb.get_map(), rap.get_map());
             }
@@ -340,12 +337,19 @@ void test_data(const std::string& input, const std::string& output)
             std::cout << "\r\tRunning for node " << node << ", " << node_i << " / " << matrices.size() << "..." << std::flush;
         }
 
-        for (const auto& [k, omega] : params)
+        map_t map;
+        map.reserve(std::pow(sigma, 10));
+
+        //auto parameters = params;
+        auto parameters = params_one_k;
+        for (const auto& [k, omega] : parameters)
         {
             for (const auto& window : to_windows(matrix, k))
             {
+                //map.clear();
+
                 auto begin = std::chrono::steady_clock::now();
-                branch_and_bound bb(window, k);
+                branch_and_bound bb(map, window, k);
                 bb.run(omega);
                 auto end = std::chrono::steady_clock::now();
                 long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
@@ -354,9 +358,11 @@ void test_data(const std::string& input, const std::string& output)
                                     bb.get_map().size(), bb_time,
                                     k, omega
                                 });
-/*
+
+                //map.clear();
+
                 begin = std::chrono::steady_clock::now();
-                divide_and_conquer dc(window, k);
+                divide_and_conquer dc(map, window, k);
                 dc.run(omega);
                 end = std::chrono::steady_clock::now();
                 long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
@@ -365,22 +371,6 @@ void test_data(const std::string& input, const std::string& output)
                                     dc.get_map().size(), dc_time,
                                     k, omega
                                 });
-*/
-
-                /*
-                matrix.sort();
-
-                begin = std::chrono::steady_clock::now();
-                rappas rap(matrix, k);
-                rap.run(omega);
-                end = std::chrono::steady_clock::now();
-                long rap_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                        algorithm::rappas,
-                                        rap.get_map().size(), rap_time,
-                                        k, omega
-                                });
-                */
 
                 //assert_equal(bb.get_map(), dc.get_map());
                 //assert_equal(bb.get_map(), rap.get_map());
@@ -403,12 +393,11 @@ int main(int argc, char** argv)
 {
     srand(42);
 
-    //test_one(5);
+    //test_one(10);
     //test_suite();
 
-    test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+    //test_random(500, std::string(std::tmpnam(nullptr)) + ".csv");
 
-    /*
     if (argc > 1)
     {
         std::string filename = argv[1];
@@ -418,7 +407,7 @@ int main(int argc, char** argv)
     {
         std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
         std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
-    }*/
+    }
 
     return 0;
 }

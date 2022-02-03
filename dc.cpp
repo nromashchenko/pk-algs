@@ -22,15 +22,14 @@ std::vector<phylo_kmer> as_column(const window& window, size_t j, score_t eps)
 
 
 
-divide_and_conquer::divide_and_conquer(const window& window, size_t k)
+divide_and_conquer::divide_and_conquer(map_t& map, const window& window, size_t k)
         : _window(window)
+        , _map(map)
         , _k(k)
 {
     /// kmer_size can also be zero, which means the end() iterator
     const auto halfsize = size_t{ k / 2 };
     _prefix_size = (halfsize >= 1) ? halfsize : k;
-
-    map.reserve(1000000);
 }
 
 void divide_and_conquer::run(score_t omega)
@@ -39,7 +38,7 @@ void divide_and_conquer::run(score_t omega)
 
     for (const auto& [kmer, score] : kmers)
     {
-        map[kmer] = score;
+        _map[kmer] = score;
     }
 }
 
@@ -86,5 +85,5 @@ std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h
 
 const map_t& divide_and_conquer::get_map()
 {
-    return map;
+    return _map;
 }
