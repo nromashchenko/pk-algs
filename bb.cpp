@@ -17,6 +17,8 @@ branch_and_bound::branch_and_bound(map_t& map, const window& window, size_t k)
     {
         throw std::runtime_error("The size of the window is not k");
     }
+
+    _result_list.reserve(std::pow(sigma, k));
 }
 
 void branch_and_bound::run(score_t omega)
@@ -55,7 +57,9 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
     {
         if (score > eps)
         {
-            _map[prefix] = score;
+            _result_list.push_back({prefix, score});
+            //_map[prefix] = score;
+
             //_returns.push_back(bb_return::GOOD_KMER);
             //return _returns.back();
             return bb_return::GOOD_KMER;
@@ -96,6 +100,16 @@ const map_t& branch_and_bound::get_map()
 std::vector<bb_return> branch_and_bound::get_returns() const
 {
     return _returns;
+}
+
+const std::vector<phylo_kmer>& branch_and_bound::get_result() const
+{
+    return _result_list;
+}
+
+size_t branch_and_bound::get_num_kmers() const
+{
+    return _result_list.size();
 }
 /*
 rappas::rappas(const matrix& matrix, size_t k)

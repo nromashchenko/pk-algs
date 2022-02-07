@@ -91,11 +91,11 @@ void print_map(const map_t& map)
     std::cout << std::endl;
 }
 
-void assert_equal(const map_t& map1, const map_t& map2)
+void assert_equal_map(const map_t& map1, const map_t& map2)
 {
     if (map1.size() != map2.size())
     {
-        std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
+        //std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
     }
 
     // allows one mismatch
@@ -111,7 +111,25 @@ void assert_equal(const map_t& map1, const map_t& map2)
     }
 }
 
-/*
+void assert_equal(std::vector<phylo_kmer> a, std::vector<phylo_kmer> b)
+{
+    assert(a.size() == b.size());
+
+    std::unordered_map<code_t, score_t> map_a;
+    for (const auto& [kmer, score] : a)
+    {
+        map_a[kmer] = score;
+    }
+
+    std::unordered_map<code_t, score_t> map_b;
+    for (const auto& [kmer, score] : b)
+    {
+        map_b[kmer] = score;
+    }
+    assert_equal_map(map_a, map_b);
+}
+
+
 void test_one(size_t k, bool print=true)
 {
     const score_t omega = 1.0;
@@ -126,22 +144,24 @@ void test_one(size_t k, bool print=true)
     for (const auto& window : to_windows(matrix, k))
     {
         //std::cout << "WINDOW: " << window.get_position() << std::endl;
-        branch_and_bound bb(window, k);
+        map_t map_bb;
+        branch_and_bound bb(map_bb, window, k);
         bb.run(omega);
         if (print)
         {
             //print_map(bb.get_map());
-            std::cout << "Branch-and-bound, generated: " << bb.get_map().size() << std::endl;
+            std::cout << "Branch-and-bound, generated: " << bb.get_result().size() << std::endl;
         }
 
-        divide_and_conquer dc(window, k);
+        map_t map_dc;
+        divide_and_conquer dc(map_dc, window, k);
         dc.run(omega);
         if (print)
         {
             //print_map(dc.get_map());
-            std::cout << "Divide-and-conquer, generated: " << dc.get_map().size() << std::endl;
+            std::cout << "Divide-and-conquer, generated: " << dc.get_result().size() << std::endl;
         }
-
+/*
         brute_force bf(window, k);
         bf.run(omega);
         if (print)
@@ -150,10 +170,12 @@ void test_one(size_t k, bool print=true)
             std::cout << "Brute force, generated: " << bf.get_map().size() << std::endl;
         }
 
-        matrix.sort();
+        matrix.sort();*/
 
-        assert_equal(bb.get_map(), bf.get_map());
-        assert_equal(dc.get_map(), bf.get_map());
+        assert_equal(bb.get_result(), dc.get_result());
+
+        //assert_equal(bb.get_map(), bf.get_map());
+        //assert_equal(dc.get_map(), bf.get_map());
         //assert_equal(rap.get_map(), bf.get_map());
     }
 
@@ -174,7 +196,7 @@ void test_suite()
         std::cout << "\rTesting k = " << k << ". Done." << std::endl;
     }
 }
-*/
+
 
 enum class algorithm
 {
@@ -266,8 +288,8 @@ void test_random(size_t num_iter, const std::string& filename)
     std::vector<run_stats> stats;
     std::vector<bb_stats> bb_stats;
 
-    const auto parameters = params;
-    //const auto parameters = params_one_k;
+    //const auto parameters = params;
+    const auto parameters = params_one_k;
     for (const auto& [k, omega] : parameters)
     {
         for (size_t i = 0; i < num_iter; ++i)
@@ -275,7 +297,7 @@ void test_random(size_t num_iter, const std::string& filename)
             std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". " << i << " / " << num_iter << "..." << std::flush;
 
             map_t map;
-            map.reserve(std::pow(sigma, k));
+            //map.reserve(std::pow(sigma, k));
 
             auto matrix = generate(5 * k);
 
@@ -290,7 +312,9 @@ void test_random(size_t num_iter, const std::string& filename)
                 long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                 stats.push_back({
                                     algorithm::bb,
-                                    bb.get_map().size(), bb_time,
+                                    //bb.get_map().size(),
+                                    bb.get_num_kmers(),
+                                    bb_time,
                                     k, omega
                                 });
                 bb_stats.push_back({ k, omega, bb.get_returns()});
@@ -304,10 +328,12 @@ void test_random(size_t num_iter, const std::string& filename)
                 long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                 stats.push_back({
                                     algorithm::dc,
-                                    dc.get_map().size(), dc_time,
+                                    //dc.get_map().size(),
+                                    dc.get_num_kmers(),
+                                    dc_time,
                                     k, omega
                                 });
-                assert_equal(bb.get_map(), dc.get_map());
+                assert_equal(bb.get_result(), dc.get_result());
                 //assert_equal(bb.get_map(), rap.get_map());
             }
         }
@@ -338,10 +364,10 @@ void test_data(const std::string& input, const std::string& output)
         }
 
         map_t map;
-        map.reserve(std::pow(sigma, 10));
+        //map.reserve(std::pow(sigma, 10));
 
-        //auto parameters = params;
-        auto parameters = params_one_k;
+        auto parameters = params;
+        //auto parameters = params_one_k;
         for (const auto& [k, omega] : parameters)
         {
             for (const auto& window : to_windows(matrix, k))
@@ -355,7 +381,7 @@ void test_data(const std::string& input, const std::string& output)
                 long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                 stats.push_back({
                                     algorithm::bb,
-                                    bb.get_map().size(), bb_time,
+                                    bb.get_result().size(), bb_time,
                                     k, omega
                                 });
 
@@ -368,12 +394,11 @@ void test_data(const std::string& input, const std::string& output)
                 long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                 stats.push_back({
                                     algorithm::dc,
-                                    dc.get_map().size(), dc_time,
+                                    dc.get_result().size(), dc_time,
                                     k, omega
                                 });
 
-                //assert_equal(bb.get_map(), dc.get_map());
-                //assert_equal(bb.get_map(), rap.get_map());
+                //assert_equal(bb.get_result(), dc.get_result());
             }
         }
 
@@ -393,11 +418,11 @@ int main(int argc, char** argv)
 {
     srand(42);
 
-    //test_one(10);
+    test_one(10);
     //test_suite();
 
-    //test_random(500, std::string(std::tmpnam(nullptr)) + ".csv");
-
+    //test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+/*
     if (argc > 1)
     {
         std::string filename = argv[1];
@@ -408,6 +433,6 @@ int main(int argc, char** argv)
         std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
         std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
     }
-
+*/
     return 0;
 }
