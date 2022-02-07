@@ -19,4 +19,13 @@ enum class bb_return
 };
 
 
+struct phylo_kmer
+{
+    code_t kmer;
+    score_t score;
+};
+
+bool kmer_score_comparator(const phylo_kmer& k1, const phylo_kmer& k2);
+
+
 #endif //XPAS_ALGS_COMMON_H
