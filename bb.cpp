@@ -23,30 +23,64 @@ branch_and_bound::branch_and_bound(map_t& map, const window& window, size_t k)
 
 void branch_and_bound::run(score_t omega)
 {
-    // precalc the scores of the best suffixes
-    code_t prefix = 0;
-    //score_t score = 0.0;
-    score_t score = 1.0;
-    for (size_t i = 0; i < _k; ++i)
     {
-        const auto& [index_best, score_best] = _window.max_at(_k - i - 1);
+        _best_suffix_score.push_back(1.0f);
 
-        prefix = (index_best << i * 2) | prefix;
-        //score = score + score_best;
-        score = score * score_best;
+        // precalc the scores of the best suffixes
+        code_t prefix = 0;
+        //score_t score = 0.0;
+        score_t score = 1.0;
+        for (size_t i = 0; i < _k; ++i)
+        {
+            const auto& [index_best, score_best] = _window.max_at(_k - i - 1);
 
-        //std::cout << "BEST: " << kmer_score << std::endl;
-        _best_suffix_score.push_back(score);
+            prefix = (index_best << i * 2) | prefix;
+            //score = score + score_best;
+            score = score * score_best;
+
+            //std::cout << "BEST: " << kmer_score << std::endl;
+            _best_suffix_score.push_back(score);
+        }
     }
 
+
     const score_t eps = std::pow((omega / 4), _k);
-    //bb(0, 0, 0, 0.0, eps);
+
+    /*
     for (size_t i = 0; i < sigma; ++i)
     {
         bb(i, 0, 0, 1.0, eps);
+    }*/
+
+    _stack.push_back({std::numeric_limits<code_t>::infinity(), 1.0, 0});
+
+    while (!_stack.empty())
+    {
+        auto [prefix, score, j] = _stack.back();
+        _stack.pop_back();
+
+        if (j == _k)
+        {
+            _result_list.push_back({prefix, score});
+        }
+        else
+        {
+            for (code_t i = 0ul; i < sigma; ++i)
+            {
+                const auto new_score = score * _window.get(i, j);
+                //const auto best_suffix = _best_suffix_score[_k - ((j + 1) + 1)];
+                const auto best_suffix = _best_suffix_score[_k - (j + 1)];
+                if (new_score * best_suffix > eps)
+                {
+                    const auto new_prefix = (prefix << 2) | i;
+                    _stack.push_back({new_prefix, new_score, static_cast<unsigned short>(j + 1u)});
+                }
+
+            }
+        }
     }
 }
-
+/*
 bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score, score_t eps)
 {
     // score = score + _matrix[i][j];
@@ -59,15 +93,10 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
         {
             _result_list.push_back({prefix, score});
             //_map[prefix] = score;
-
-            //_returns.push_back(bb_return::GOOD_KMER);
-            //return _returns.back();
             return bb_return::GOOD_KMER;
         }
         else
         {
-            _returns.push_back(bb_return::BAD_PREFIX);
-            return _returns.back();
             return bb_return::BAD_PREFIX;
         }
     }
@@ -76,8 +105,6 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
     //if (score + best_suffix <= eps)
     if (score * best_suffix <= eps)
     {
-        //_returns.push_back(bb_return::BAD_PREFIX);
-        //return _returns.back();
         return bb_return::BAD_PREFIX;
     }
     else
@@ -86,11 +113,10 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
         {
             bb(i2, j + 1, prefix, score, eps);
         }
-        //_returns.push_back(bb_return::GOOD_PRFIX);
-        //return _returns.back();
         return bb_return::GOOD_PRFIX;
     }
-}
+}*/
+
 
 const map_t& branch_and_bound::get_map()
 {

@@ -56,7 +56,9 @@ std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h
     }
     else
     {
-        std::vector<phylo_kmer> result;
+        std::vector<phylo_kmer> result_vector;
+        std::vector<phylo_kmer>& result = (h == _k) ? _result_list : result_vector;
+
         score_t eps_l = eps / best_score(j + h / 2, h - h / 2);
         score_t eps_r = eps / best_score(j, h / 2);
 
