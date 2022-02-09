@@ -26,7 +26,8 @@ const std::vector<run_params> params =
         { 8, 1.0},
         { 9, 1.0},
         { 10, 1.0},
-        //{ 11, 1.0},
+        { 11, 1.0},
+        { 12, 1.0},
 
         { 6, 1.25},
         { 7, 1.25},
@@ -45,8 +46,8 @@ const std::vector<run_params> params =
         { 10, 1.5},
         { 11, 1.5},
         { 12, 1.5},
-        //{ 13, 1.5},
-        //{ 14, 1.5},
+        { 13, 1.5},
+        { 14, 1.5},
 
         { 6, 1.75},
         { 7, 1.75},
@@ -55,8 +56,8 @@ const std::vector<run_params> params =
         { 10, 1.75},
         { 11, 1.75},
         { 12, 1.75},
-        //{ 13, 1.75},
-        //{ 14, 1.75},
+        { 13, 1.75},
+        { 14, 1.75},
 
         { 6, 2.0},
         { 7, 2.0},
@@ -65,22 +66,52 @@ const std::vector<run_params> params =
         { 10, 2.0},
         { 11, 2.0},
         { 12, 2.0},
-        //{ 13, 2.0},
-        //{ 14, 2.0},*/
+        { 13, 2.0},
+        { 14, 2.0},
 
     };
 
 const size_t const_k = 10;
+
+const std::vector<run_params> params_default =
+    {
+        { 10, 1.0},
+    };
+
+
 //const size_t const_k = 5;
 const std::vector<run_params> params_one_k =
 {
-    { const_k, 1.0},
-    /*{ const_k, 1.25},
-    { const_k, 1.5},
-    { const_k, 1.75},
-    { const_k, 2.0},*/
+    { 6, 1.0},
+    { 7, 1.0},
+    { 8, 1.0},
+    { 9, 1.0},
+    { 10, 1.0},
+    { 11, 1.0},
+    { 12, 1.0},
 };
 
+const std::vector<run_params> params_omega_1 =
+    {
+        { 6, 1.0},
+        { 7, 1.0},
+        { 8, 1.0},
+        { 9, 1.0},
+        { 10, 1.0},
+        //{ 11, 1.0},
+        //{ 12, 1.0},
+    };
+
+const std::vector<run_params> params_omega_1_5 =
+    {
+        { 6, 1.5},
+        { 7, 1.5},
+        { 8, 1.5},
+        { 9, 1.5},
+        { 10, 1.5},
+        { 11, 1.5},
+        { 12, 1.5},
+    };
 
 void print_map(const map_t& map)
 {
@@ -95,7 +126,7 @@ void assert_equal_map(const map_t& map1, const map_t& map2)
 {
     if (map1.size() != map2.size())
     {
-        //std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
+        std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
     }
 
     // allows one mismatch
@@ -212,6 +243,8 @@ struct run_stats
     long time;
     size_t k;
     score_t omega;
+    std::string node;
+    size_t window_pos;
 };
 
 void print_as_csv(const std::vector<run_stats>& stats, const std::string& filename)
@@ -219,10 +252,10 @@ void print_as_csv(const std::vector<run_stats>& stats, const std::string& filena
     std::cout << "Writing results: " << filename << "...";
 
     std::ofstream file(filename);
-    file << "alg,num_kmers,time,k,omega" << std::endl;
+    file << "alg,num_kmers,time,k,omega,node,position" << std::endl;
     for (const auto& stat: stats)
     {
-        const auto& [alg, num_kmers, time, k, omega] = stat;
+        const auto& [alg, num_kmers, time, k, omega, node, position] = stat;
 
         switch (alg)
         {
@@ -236,7 +269,7 @@ void print_as_csv(const std::vector<run_stats>& stats, const std::string& filena
                 file << "rappas";
                 break;
         }
-        file << "," << num_kmers << "," << time << "," << k << "," << omega << std::endl;
+        file << "," << num_kmers << "," << time << "," << k << "," << omega << "," << node << "," << position << std::endl;
     }
     file.close();
 
@@ -285,11 +318,15 @@ void print_returns(const std::vector<bb_stats>& stats, const std::string& filena
 
 void test_random(size_t num_iter, const std::string& filename)
 {
+    const auto node_name = "Random" + std::to_string(num_iter);
+
     std::vector<run_stats> stats;
     std::vector<bb_stats> bb_stats;
 
     //const auto parameters = params;
-    const auto parameters = params_one_k;
+    //const auto parameters = params_one_k;
+    const auto parameters = params_omega_1;
+
     for (const auto& [k, omega] : parameters)
     {
         for (size_t i = 0; i < num_iter; ++i)
@@ -315,7 +352,9 @@ void test_random(size_t num_iter, const std::string& filename)
                                     //bb.get_map().size(),
                                     bb.get_num_kmers(),
                                     bb_time,
-                                    k, omega
+                                    k, omega,
+                                    node_name,
+                                    window.get_position()
                                 });
                 bb_stats.push_back({ k, omega, bb.get_returns()});
 
@@ -331,7 +370,9 @@ void test_random(size_t num_iter, const std::string& filename)
                                     //dc.get_map().size(),
                                     dc.get_num_kmers(),
                                     dc_time,
-                                    k, omega
+                                    k, omega,
+                                    node_name,
+                                    window.get_position()
                                 });
                 assert_equal(bb.get_result(), dc.get_result());
                 //assert_equal(bb.get_map(), rap.get_map());
@@ -349,7 +390,7 @@ void test_data(const std::string& input, const std::string& output)
     raxmlng_reader reader(input);
     auto matrices = reader.read();
 
-    const size_t sample_size = 10;
+    const size_t sample_size = 100;
     std::unordered_map<std::string, matrix> sample;
     std::sample(matrices.begin(), matrices.end(), std::inserter(sample, sample.begin()),
                 sample_size, std::mt19937{std::random_device{}()});
@@ -366,7 +407,9 @@ void test_data(const std::string& input, const std::string& output)
         map_t map;
         //map.reserve(std::pow(sigma, 10));
 
-        auto parameters = params;
+        //auto parameters = params_default;
+        auto parameters = params_omega_1;
+        //auto parameters = params;
         //auto parameters = params_one_k;
         for (const auto& [k, omega] : parameters)
         {
@@ -382,7 +425,9 @@ void test_data(const std::string& input, const std::string& output)
                 stats.push_back({
                                     algorithm::bb,
                                     bb.get_result().size(), bb_time,
-                                    k, omega
+                                    k, omega,
+                                    node,
+                                    window.get_position()
                                 });
 
                 //map.clear();
@@ -395,7 +440,9 @@ void test_data(const std::string& input, const std::string& output)
                 stats.push_back({
                                     algorithm::dc,
                                     dc.get_result().size(), dc_time,
-                                    k, omega
+                                    k, omega,
+                                    node,
+                                    window.get_position()
                                 });
 
                 //assert_equal(bb.get_result(), dc.get_result());
@@ -418,8 +465,8 @@ int main(int argc, char** argv)
 {
     srand(42);
 
-    test_one(10);
-    //test_suite();
+    //test_one(10);
+    test_suite();
 
     //test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
 /*
