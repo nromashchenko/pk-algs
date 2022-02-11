@@ -24,7 +24,8 @@ branch_and_bound::branch_and_bound(map_t& map, const window& window, size_t k)
 void branch_and_bound::run(score_t omega)
 {
     {
-        _best_suffix_score.push_back(1.0f);
+        // For the iterative BB
+        //_best_suffix_score.push_back(1.0f);
 
         // precalc the scores of the best suffixes
         code_t prefix = 0;
@@ -46,12 +47,14 @@ void branch_and_bound::run(score_t omega)
 
     const score_t eps = std::pow((omega / 4), _k);
 
-    /*
+    // Recursive BB
     for (size_t i = 0; i < sigma; ++i)
     {
         bb(i, 0, 0, 1.0, eps);
-    }*/
+    }
 
+    // Iterative BB
+    /*
     _stack.push_back({std::numeric_limits<code_t>::infinity(), 1.0, 0});
 
     while (!_stack.empty())
@@ -78,9 +81,9 @@ void branch_and_bound::run(score_t omega)
 
             }
         }
-    }
+    }*/
 }
-/*
+
 bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score, score_t eps)
 {
     // score = score + _matrix[i][j];
@@ -101,7 +104,7 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
         }
     }
 
-    const auto best_suffix = _best_suffix_score[_k - ((j + 1) + 1)];
+    const auto best_suffix = _best_suffix_score[_k - (j + 2)];
     //if (score + best_suffix <= eps)
     if (score * best_suffix <= eps)
     {
@@ -115,7 +118,7 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
         }
         return bb_return::GOOD_PRFIX;
     }
-}*/
+}
 
 
 const map_t& branch_and_bound::get_map()

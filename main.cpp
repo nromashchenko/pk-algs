@@ -126,7 +126,7 @@ void assert_equal_map(const map_t& map1, const map_t& map2)
 {
     if (map1.size() != map2.size())
     {
-        std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
+        //std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
     }
 
     // allows one mismatch
@@ -142,9 +142,9 @@ void assert_equal_map(const map_t& map1, const map_t& map2)
     }
 }
 
-void assert_equal(std::vector<phylo_kmer> a, std::vector<phylo_kmer> b)
+void assert_equal(const std::vector<phylo_kmer>& a, const std::vector<phylo_kmer>& b)
 {
-    assert(a.size() == b.size());
+    //assert(a.size() == b.size());
 
     std::unordered_map<code_t, score_t> map_a;
     for (const auto& [kmer, score] : a)
@@ -158,6 +158,14 @@ void assert_equal(std::vector<phylo_kmer> a, std::vector<phylo_kmer> b)
         map_b[kmer] = score;
     }
     assert_equal_map(map_a, map_b);
+}
+
+void check_size(const std::vector<phylo_kmer>& a, const std::vector<phylo_kmer>& b)
+{
+    if (a.size() != b.size())
+    {
+        std::cout << "Different sizes: " << a.size() << ", " << b.size() << std::endl;
+    }
 }
 
 
@@ -325,7 +333,8 @@ void test_random(size_t num_iter, const std::string& filename)
 
     //const auto parameters = params;
     //const auto parameters = params_one_k;
-    const auto parameters = params_omega_1;
+    //const auto parameters = params_omega_1;
+    const auto parameters = params_omega_1_5;
 
     for (const auto& [k, omega] : parameters)
     {
@@ -336,7 +345,8 @@ void test_random(size_t num_iter, const std::string& filename)
             map_t map;
             //map.reserve(std::pow(sigma, k));
 
-            auto matrix = generate(5 * k);
+            //auto matrix = generate(5 * k);
+            auto matrix = generate(1000);
 
 
             for (const auto& window : to_windows(matrix, k))
@@ -408,7 +418,8 @@ void test_data(const std::string& input, const std::string& output)
         //map.reserve(std::pow(sigma, 10));
 
         //auto parameters = params_default;
-        auto parameters = params_omega_1;
+        //auto parameters = params_omega_1;
+        auto parameters = params_omega_1_5;
         //auto parameters = params;
         //auto parameters = params_one_k;
         for (const auto& [k, omega] : parameters)
@@ -446,6 +457,7 @@ void test_data(const std::string& input, const std::string& output)
                                 });
 
                 //assert_equal(bb.get_result(), dc.get_result());
+                //check_size(bb.get_result(), dc.get_result());
             }
         }
 
@@ -466,9 +478,9 @@ int main(int argc, char** argv)
     srand(42);
 
     //test_one(10);
-    test_suite();
+    //test_suite();
 
-    //test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+    test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
 /*
     if (argc > 1)
     {
@@ -479,7 +491,7 @@ int main(int argc, char** argv)
     {
         std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
         std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
-    }
-*/
+    }*/
+
     return 0;
 }

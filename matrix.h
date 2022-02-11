@@ -141,6 +141,33 @@ private:
 };
 
 
+class chain_windows
+{
+public:
+    using iterator_category = std::forward_iterator_tag;
+    using const_iterator = impl::window_iterator;
+
+    using reference = window&;
+
+    chain_windows(matrix& matrix, size_t kmer_size);
+    chain_windows(const to_windows&) = delete;
+    chain_windows(chain_windows&&) = delete;
+    chain_windows& operator=(const chain_windows&) = delete;
+    chain_windows& operator=(chain_windows&&) = delete;
+    ~chain_windows() noexcept = default;
+
+    [[nodiscard]]
+    const_iterator begin() const;
+
+    [[nodiscard]]
+    const_iterator end() const noexcept;
+
+private:
+    matrix& _matrix;
+    size_t _kmer_size;
+};
+
+
 matrix generate(size_t length);
 void print_matrix(const matrix& matrix);
 
