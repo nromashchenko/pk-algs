@@ -118,6 +118,12 @@ std::vector<matrix::column>& matrix::get_data()
     return data;
 }
 
+const matrix::column& matrix::get_column(size_t j) const
+{
+    return data[j];
+}
+
+
 /*
 matrix::column& matrix::get_row(size_t i)
 {
@@ -177,6 +183,11 @@ bool window::empty() const
 size_t window::get_position() const
 {
     return _start_pos;
+}
+
+matrix::column window::get_column(size_t j) const
+{
+    return _matrix.get_column(j);
 }
 
 std::pair<size_t, score_t> window::max_at(size_t column) const

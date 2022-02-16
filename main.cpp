@@ -184,6 +184,32 @@ void check_size(const std::vector<phylo_kmer>& a, const std::vector<phylo_kmer>&
     }
 }
 
+score_t shannon(const std::vector<score_t>& values)
+{
+    score_t result = 0.0;
+    for (const auto& v : values)
+    {
+        result += v * static_cast<score_t>(log2(v));
+    }
+    return - result;
+}
+
+// Get the order of columns by entropy
+std::vector<column_data> get_order(const window& window)
+{
+    std::vector<column_data> order;
+    const auto k = window.size();
+    for (size_t j = 0; j < k; ++j)
+    {
+        order.push_back({j,  shannon(window.get_column(j))});
+    }
+
+    auto entropy_compare = [](const auto& a, const auto& b) {
+        return a.entropy < b.entropy;
+    };
+    std::sort(order.begin(), order.end(), entropy_compare);
+    return order;
+}
 
 void test_one(size_t k, bool print=true)
 {
@@ -207,13 +233,34 @@ void test_one(size_t k, bool print=true)
             std::cout << "Branch-and-bound, generated: " << bb.get_result().size() << std::endl;
         }
 
+
+        /*
+        std::cout << "Order:" << std::endl;
+        for (const auto &[j, e] : order)
+        {
+            std::cout << j << ":" << e << std::endl;
+        }*/
+
+        bbe bbe(window, std::move(get_order(window)), k);
+        bbe.run(omega);
+        if (print)
+        {
+            //print_map(bb.get_map());
+            std::cout << "Branch-and-bound Sorted, generated: " << bbe.get_result().size() << std::endl;
+        }
+
+        assert_equal(bb.get_result(), bbe.get_result());
+
+
         divide_and_conquer dc(window, k);
         dc.run(omega);
         if (print)
         {
             //print_map(dc.get_map());
             std::cout << "Divide-and-conquer, generated: " << dc.get_result().size() << std::endl;
+            std::cout << std::endl;
         }
+
 /*
         brute_force bf(window, k);
         bf.run(omega);
@@ -225,6 +272,8 @@ void test_one(size_t k, bool print=true)
 
         matrix.sort();*/
 
+
+        assert_equal(bb.get_result(), bbe.get_result());
         assert_equal(bb.get_result(), dc.get_result());
         //assert_equal(dc.get_result(), dccw.get_result());
 
@@ -258,7 +307,8 @@ enum class algorithm
     dc = 1,
     rappas = 2,
     dccw = 3,
-    baseline = 4
+    baseline = 4,
+    bbe = 5
 };
 
 struct run_stats
@@ -298,6 +348,9 @@ void print_as_csv(const std::vector<run_stats>& stats, const std::string& filena
                 break;
             case algorithm::baseline:
                 file << "bl";
+                break;
+            case algorithm::bbe:
+                file << "bbe";
                 break;
         }
         file << "," << num_kmers << "," << time << "," << k << "," << omega << "," << node << "," << position << std::endl;
@@ -391,8 +444,6 @@ void test_random(size_t num_iter, const std::string& filename)
 
 
 
-
-
             for (const auto& window : chain_windows(matrix, k))
             //for (const auto& window : to_windows(matrix, k))
             {
@@ -413,6 +464,21 @@ void test_random(size_t num_iter, const std::string& filename)
                                 });
                 bb_stats.push_back({ k, omega, bb.get_returns()});
 
+                bbe bbe(window, std::move(get_order(window)), k);
+                begin = std::chrono::steady_clock::now();
+                bbe.run(omega);
+                end = std::chrono::steady_clock::now();
+                long bbe_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::bbe,
+                                    bbe.get_num_kmers(),
+                                    bbe_time,
+                                    k, omega,
+                                    node_name,
+                                    window.get_position()
+                                });
+
+                //assert_equal(bb.get_result(), bbe.get_result());
 
                 //map.clear();
                 divide_and_conquer dc(window, k);
