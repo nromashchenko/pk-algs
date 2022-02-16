@@ -102,6 +102,13 @@ const std::vector<run_params> params_omega_1 =
         //{ 12, 1.0},
     };
 
+const std::vector<run_params> params_omega_1_even_k =
+    {
+        { 6, 1.0},
+        { 8, 1.0},
+        { 10, 1.0},
+    };
+
 const std::vector<run_params> params_omega_1_5 =
     {
         { 6, 1.5},
@@ -547,7 +554,7 @@ void test_data(const std::string& input, const std::string& output)
     //std::unordered_map<std::string, matrix> sample = matrices;
 
     //const size_t sample_size = 100;
-    const size_t sample_size = 20;
+    const size_t sample_size = 10;
     std::unordered_map<std::string, matrix> sample;
     std::sample(matrices.begin(), matrices.end(), std::inserter(sample, sample.begin()),
                 sample_size, std::mt19937{std::random_device{}()});
@@ -562,8 +569,8 @@ void test_data(const std::string& input, const std::string& output)
         }
 
         //auto parameters = params_default;
-        //auto parameters = params_omega_1;
-        auto parameters = params_omega_1_5_even_k;
+        auto parameters = params_omega_1_even_k;
+        //auto parameters = params_omega_1_5_even_k;
         //auto parameters = params_omega_0;
         //auto parameters = params_omega_1_5;
         //auto parameters = params;
@@ -576,7 +583,7 @@ void test_data(const std::string& input, const std::string& output)
             //for (const auto& window : to_windows(matrix, k))
             {
                 //map.clear();
-/*
+
                 auto begin = std::chrono::steady_clock::now();
                 branch_and_bound bb(window, k);
                 bb.run(omega);
@@ -589,13 +596,26 @@ void test_data(const std::string& input, const std::string& output)
                                     node,
                                     window.get_position()
                                 });
-*/
-                //map.clear();
 
-                auto begin = std::chrono::steady_clock::now();
+                //map.clear();
+                bbe bbe(window, std::move(get_order(window)), k);
+                begin = std::chrono::steady_clock::now();
+                bbe.run(omega);
+                end = std::chrono::steady_clock::now();
+                long bbe_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::bbe,
+                                    bbe.get_num_kmers(),
+                                    bbe_time,
+                                    k, omega,
+                                    node,
+                                    window.get_position()
+                                });
+
+                begin = std::chrono::steady_clock::now();
                 divide_and_conquer dc(window, k);
                 dc.run(omega);
-                auto end = std::chrono::steady_clock::now();
+                end = std::chrono::steady_clock::now();
                 long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                 stats.push_back({
                                     algorithm::dc,
@@ -664,9 +684,9 @@ int main(int argc, char** argv)
     //test_one(10);
     //test_suite();
 
-    test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+    //test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
 
-/*
+
     if (argc > 1)
     {
         std::string filename = argv[1];
@@ -676,7 +696,7 @@ int main(int argc, char** argv)
     {
         std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
         std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
-    }*/
+    }
 
     return 0;
 }
