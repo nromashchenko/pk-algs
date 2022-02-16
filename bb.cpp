@@ -142,6 +142,104 @@ void branch_and_bound::preprocess()
     }
 }
 
+
+
+bbe::bbe(const window& window, std::vector<column_data> order, size_t k)
+    : _window(window), _order(std::move(order)), _k(k), _best_suffix_score(k)
+{
+    if (_window.empty())
+    {
+        throw std::runtime_error("The matrix is empty.");
+    }
+
+    if (_window.size() != k)
+    {
+        throw std::runtime_error("The size of the window is not k");
+    }
+
+    _result_list.reserve(std::pow(sigma, k));
+
+    preprocess();
+}
+
+void bbe::run(score_t omega)
+{
+    const score_t eps = get_threshold(omega, _k);
+
+    // Recursive BB
+    for (size_t i = 0; i < sigma; ++i)
+    {
+        bb(i, 0, 0, 1.0, eps);
+    }
+}
+
+bb_return bbe::bb(size_t i, size_t column_id, code_t prefix, score_t score, score_t eps)
+{
+    const size_t j = _order[column_id].j;
+    score = score * _window.get(i, j);
+    //prefix = (prefix << 2) | i;
+    prefix |= i << (2 * (_k - 1 - j));
+
+    if (column_id == _k - 1)
+    {
+        if (score > eps)
+        {
+            _result_list.push_back({prefix, score});
+            return bb_return::GOOD_KMER;
+        }
+        else
+        {
+            return bb_return::BAD_PREFIX;
+        }
+    }
+
+    const auto best_suffix = _best_suffix_score[column_id + 1];
+    if (score * best_suffix <= eps)
+    {
+        return bb_return::BAD_PREFIX;
+    }
+    else
+    {
+        for (size_t i2 = 0; i2 < sigma; ++i2)
+        {
+            bb(i2, column_id + 1, prefix, score, eps);
+        }
+        return bb_return::GOOD_PRFIX;
+    }
+}
+
+std::vector<bb_return> bbe::get_returns() const
+{
+    return _returns;
+}
+
+const std::vector<phylo_kmer>& bbe::get_result() const
+{
+    return _result_list;
+}
+
+size_t bbe::get_num_kmers() const
+{
+    return _result_list.size();
+}
+
+void bbe::preprocess()
+{
+    // Precalculate the scores of the best suffixes, in the reverse column order given by the heap
+    score_t score = 1.0;
+
+    for (int column_id = _k - 1; column_id >= 0; --column_id)
+    {
+        const auto j = _order[column_id].j;
+        const auto& [index_best, score_best] = _window.max_at(j);
+
+        score = score * score_best;
+        _best_suffix_score[column_id] = score;
+    }
+}
+
+
+
 baseline::baseline(const window& window, size_t k, size_t num_kmers)
     : _window(window), _k(k), _num_kmers(num_kmers)
 {

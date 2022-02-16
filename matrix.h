@@ -32,7 +32,7 @@ public:
 
     //column& get_row(size_t i);
 
-    //column& get_column(size_t j);
+    const column& get_column(size_t j) const;
 
     //std::vector<std::vector<size_t>> get_order() const;
 
@@ -73,6 +73,8 @@ public:
     std::pair<size_t, score_t> max_at(size_t column) const;
 
     std::vector<matrix::column> get_data() const;
+
+    matrix::column get_column(size_t j) const;
 
     /*std::vector<std::vector<size_t>> get_order() const;*/
 

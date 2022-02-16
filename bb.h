@@ -36,6 +36,51 @@ private:
     };
     std::vector<_mmer> _stack;
 };
+
+
+// A struct for the ordering of columns
+struct column_data
+{
+    size_t j;
+    score_t entropy;
+};
+
+class bbe
+{
+public:
+    bbe(const window& window, std::vector<column_data> order, size_t k);
+    void run(score_t omega);
+    bb_return bb(size_t i, size_t column_id, code_t prefix, score_t score, score_t eps);
+    const map_t& get_map();
+
+    std::vector<bb_return> get_returns() const;
+
+    const std::vector<phylo_kmer>& get_result() const;
+
+    size_t get_num_kmers() const;
+private:
+
+    void preprocess();
+
+    const window& _window;
+    std::vector<column_data> _order;
+
+    size_t _k;
+    std::vector<score_t> _best_suffix_score;
+    std::vector<bb_return> _returns;
+
+    std::vector<phylo_kmer> _result_list;
+
+    struct _mmer
+    {
+        code_t code;
+        score_t score;
+        unsigned short length;
+    };
+    std::vector<_mmer> _stack;
+};
+
+
 /*
 class rappas
 {
