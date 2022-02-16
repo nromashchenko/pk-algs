@@ -27,5 +27,7 @@ struct phylo_kmer
 
 bool kmer_score_comparator(const phylo_kmer& k1, const phylo_kmer& k2);
 
+score_t get_threshold(score_t omega, size_t k);
+
 
 #endif //XPAS_ALGS_COMMON_H

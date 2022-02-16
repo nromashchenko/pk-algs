@@ -2,9 +2,8 @@
 
 #include "bb.h"
 
-branch_and_bound::branch_and_bound(map_t& map, const window& window, size_t k)
+branch_and_bound::branch_and_bound(const window& window, size_t k)
         : _window(window)
-        , _map(map)
         , _k(k)
         , _best_suffix_score()
 {
@@ -19,33 +18,13 @@ branch_and_bound::branch_and_bound(map_t& map, const window& window, size_t k)
     }
 
     _result_list.reserve(std::pow(sigma, k));
+
+    preprocess();
 }
 
 void branch_and_bound::run(score_t omega)
 {
-    {
-        // For the iterative BB
-        //_best_suffix_score.push_back(1.0f);
-
-        // precalc the scores of the best suffixes
-        code_t prefix = 0;
-        //score_t score = 0.0;
-        score_t score = 1.0;
-        for (size_t i = 0; i < _k; ++i)
-        {
-            const auto& [index_best, score_best] = _window.max_at(_k - i - 1);
-
-            prefix = (index_best << i * 2) | prefix;
-            //score = score + score_best;
-            score = score * score_best;
-
-            //std::cout << "BEST: " << kmer_score << std::endl;
-            _best_suffix_score.push_back(score);
-        }
-    }
-
-
-    const score_t eps = std::pow((omega / 4), _k);
+    const score_t eps = get_threshold(omega, _k);
 
     // Recursive BB
     for (size_t i = 0; i < sigma; ++i)
@@ -120,12 +99,12 @@ bb_return branch_and_bound::bb(size_t i, size_t j, code_t prefix, score_t score,
     }
 }
 
-
+/*
 const map_t& branch_and_bound::get_map()
 {
     return _map;
 }
-
+*/
 std::vector<bb_return> branch_and_bound::get_returns() const
 {
     return _returns;
@@ -140,6 +119,56 @@ size_t branch_and_bound::get_num_kmers() const
 {
     return _result_list.size();
 }
+
+void branch_and_bound::preprocess()
+{
+    // For the iterative BB
+    //_best_suffix_score.push_back(1.0f);
+
+    // precalc the scores of the best suffixes
+    code_t prefix = 0;
+    //score_t score = 0.0;
+    score_t score = 1.0;
+    for (size_t i = 0; i < _k; ++i)
+    {
+        const auto& [index_best, score_best] = _window.max_at(_k - i - 1);
+
+        prefix = (index_best << i * 2) | prefix;
+        //score = score + score_best;
+        score = score * score_best;
+
+        //std::cout << "BEST: " << kmer_score << std::endl;
+        _best_suffix_score.push_back(score);
+    }
+}
+
+baseline::baseline(const window& window, size_t k, size_t num_kmers)
+    : _window(window), _k(k), _num_kmers(num_kmers)
+{
+    _result_list.reserve(num_kmers);
+}
+
+void baseline::run(score_t omega)
+{
+    //size_t output_size = (rand() % (size_t)std::pow(sigma, _k)) + 1;
+    const auto eps = get_threshold(omega, _k);
+    for (size_t i = 0; i < _num_kmers; ++i)
+    {
+        _result_list.push_back({i, eps});
+    }
+}
+
+const std::vector<phylo_kmer>& baseline::get_result() const
+{
+    return _result_list;
+}
+
+size_t baseline::get_num_kmers() const
+{
+    return _result_list.size();
+}
+
+
 /*
 rappas::rappas(const matrix& matrix, size_t k)
         : _matrix(matrix)
