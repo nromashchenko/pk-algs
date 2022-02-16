@@ -352,9 +352,9 @@ score_t range_product(const matrix& matrix, size_t start_pos, size_t len)
 
     for (size_t i = start_pos; i < start_pos + len; ++i)
     {
-        result *= matrix[i];
+        result *= 1.0;//matrix[i];
     }
-    return result.
+    return result;
 }
 
 void test_random(size_t num_iter, const std::string& filename)
@@ -387,7 +387,7 @@ void test_random(size_t num_iter, const std::string& filename)
             // Compute the lookbehind and lookahead scores
             score_t lookahead = 1.0f;
             score_t lookbehind = 1.0f;
-            for (size_t )
+            //for (size_t )
 
 
 
@@ -444,8 +444,8 @@ void test_random(size_t num_iter, const std::string& filename)
                                     node_name,
                                     window.get_position()
                                 });*/
-
-                dccw dccw(window, prefixes, k);
+/*
+                dccw dccw(window, prefixes, k, 1.0, 1.0);
                 begin = std::chrono::steady_clock::now();
                 dccw.run(omega);
                 end = std::chrono::steady_clock::now();
@@ -459,10 +459,10 @@ void test_random(size_t num_iter, const std::string& filename)
                                     window.get_position()
                                 });
                 prefixes = std::move(dccw.get_suffixes());
-
+*/
 
                 //assert_equal(bb.get_result(), dc.get_result());
-                assert_equal(dc.get_result(), dccw.get_result());
+                //assert_equal(dc.get_result(), dccw.get_result());
                 //assert_equal(bb.get_map(), rap.get_map());
             }
         }
@@ -539,8 +539,8 @@ void test_data(const std::string& input, const std::string& output)
                                     window.get_position()
                                 });
 
-
-                dccw dccw(window, prefixes, k);
+/*
+                dccw dccw(window, prefixes, k, 1.0, 1.0);
                 begin = std::chrono::steady_clock::now();
                 dccw.run(omega);
                 end = std::chrono::steady_clock::now();
@@ -555,7 +555,7 @@ void test_data(const std::string& input, const std::string& output)
                                 });
                 prefixes = std::move(dccw.get_suffixes());
 
-
+*/
                 /*
 
                 baseline bl(window, k, dc.get_num_kmers());
