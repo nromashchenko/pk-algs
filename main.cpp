@@ -113,6 +113,21 @@ const std::vector<run_params> params_omega_1_5 =
         { 12, 1.5},
     };
 
+const std::vector<run_params> params_omega_1_5_even_k =
+    {
+        { 6, 1.5},
+        { 8, 1.5},
+        { 10, 1.5},
+        { 12, 1.5},
+        //{ 14, 1.5},
+    };
+
+const std::vector<run_params> params_omega_0 =
+    {
+        { 6, 0},
+        { 8, 0},
+    };
+
 void print_map(const map_t& map)
 {
     for (const auto& [kmer, score] : map)
@@ -126,7 +141,8 @@ void assert_equal_map(const map_t& map1, const map_t& map2)
 {
     if (map1.size() != map2.size())
     {
-        //std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
+        std::cout << "Different sizes: " << map1.size() << ", " << map2.size() << std::endl;
+        return;
     }
 
     // allows one mismatch
@@ -183,8 +199,7 @@ void test_one(size_t k, bool print=true)
     for (const auto& window : to_windows(matrix, k))
     {
         //std::cout << "WINDOW: " << window.get_position() << std::endl;
-        map_t map_bb;
-        branch_and_bound bb(map_bb, window, k);
+        branch_and_bound bb(window, k);
         bb.run(omega);
         if (print)
         {
@@ -192,8 +207,7 @@ void test_one(size_t k, bool print=true)
             std::cout << "Branch-and-bound, generated: " << bb.get_result().size() << std::endl;
         }
 
-        map_t map_dc;
-        divide_and_conquer dc(map_dc, window, k);
+        divide_and_conquer dc(window, k);
         dc.run(omega);
         if (print)
         {
@@ -212,6 +226,7 @@ void test_one(size_t k, bool print=true)
         matrix.sort();*/
 
         assert_equal(bb.get_result(), dc.get_result());
+        //assert_equal(dc.get_result(), dccw.get_result());
 
         //assert_equal(bb.get_map(), bf.get_map());
         //assert_equal(dc.get_map(), bf.get_map());
@@ -241,7 +256,9 @@ enum class algorithm
 {
     bb = 0,
     dc = 1,
-    rappas = 2
+    rappas = 2,
+    dccw = 3,
+    baseline = 4
 };
 
 struct run_stats
@@ -273,8 +290,14 @@ void print_as_csv(const std::vector<run_stats>& stats, const std::string& filena
             case algorithm::dc:
                 file << "dc";
                 break;
+            case algorithm::dccw:
+                file << "dccw";
+                break;
             case algorithm::rappas:
                 file << "rappas";
+                break;
+            case algorithm::baseline:
+                file << "bl";
                 break;
         }
         file << "," << num_kmers << "," << time << "," << k << "," << omega << "," << node << "," << position << std::endl;
@@ -323,6 +346,16 @@ void print_returns(const std::vector<bb_stats>& stats, const std::string& filena
     std::cout << std::endl;
 }
 
+score_t range_product(const matrix& matrix, size_t start_pos, size_t len)
+{
+    score_t result = 1.0f;
+
+    for (size_t i = start_pos; i < start_pos + len; ++i)
+    {
+        result *= matrix[i];
+    }
+    return result.
+}
 
 void test_random(size_t num_iter, const std::string& filename)
 {
@@ -334,7 +367,10 @@ void test_random(size_t num_iter, const std::string& filename)
     //const auto parameters = params;
     //const auto parameters = params_one_k;
     //const auto parameters = params_omega_1;
-    const auto parameters = params_omega_1_5;
+    //const auto parameters = params_omega_1_5;
+    const auto parameters = params_omega_1_5_even_k;
+    //const auto parameters = params_omega_0;
+
 
     for (const auto& [k, omega] : parameters)
     {
@@ -342,17 +378,26 @@ void test_random(size_t num_iter, const std::string& filename)
         {
             std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". " << i << " / " << num_iter << "..." << std::flush;
 
-            map_t map;
-            //map.reserve(std::pow(sigma, k));
-
             //auto matrix = generate(5 * k);
             auto matrix = generate(1000);
+            //auto matrix = generate(10);
+
+            std::vector<phylo_kmer> prefixes;
+
+            // Compute the lookbehind and lookahead scores
+            score_t lookahead = 1.0f;
+            score_t lookbehind = 1.0f;
+            for (size_t )
 
 
-            for (const auto& window : to_windows(matrix, k))
+
+
+
+            for (const auto& window : chain_windows(matrix, k))
+            //for (const auto& window : to_windows(matrix, k))
             {
                 //map.clear();
-                branch_and_bound bb(map, window, k);
+                branch_and_bound bb(window, k);
                 auto begin = std::chrono::steady_clock::now();
                 bb.run(omega);
                 auto end = std::chrono::steady_clock::now();
@@ -370,7 +415,7 @@ void test_random(size_t num_iter, const std::string& filename)
 
 
                 //map.clear();
-                divide_and_conquer dc(map, window, k);
+                divide_and_conquer dc(window, k);
                 begin = std::chrono::steady_clock::now();
                 dc.run(omega);
                 end = std::chrono::steady_clock::now();
@@ -384,7 +429,40 @@ void test_random(size_t num_iter, const std::string& filename)
                                     node_name,
                                     window.get_position()
                                 });
-                assert_equal(bb.get_result(), dc.get_result());
+/*
+                baseline bl(window, k, dc.get_num_kmers());
+                begin = std::chrono::steady_clock::now();
+                bl.run(omega);
+                end = std::chrono::steady_clock::now();
+                long bl_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::baseline,
+                                    //dc.get_map().size(),
+                                    bl.get_num_kmers(),
+                                    bl_time,
+                                    k, omega,
+                                    node_name,
+                                    window.get_position()
+                                });*/
+
+                dccw dccw(window, prefixes, k);
+                begin = std::chrono::steady_clock::now();
+                dccw.run(omega);
+                end = std::chrono::steady_clock::now();
+                long dccw_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::dccw,
+                                    dccw.get_num_kmers(),
+                                    dccw_time,
+                                    k, omega,
+                                    node_name,
+                                    window.get_position()
+                                });
+                prefixes = std::move(dccw.get_suffixes());
+
+
+                //assert_equal(bb.get_result(), dc.get_result());
+                assert_equal(dc.get_result(), dccw.get_result());
                 //assert_equal(bb.get_map(), rap.get_map());
             }
         }
@@ -400,7 +478,10 @@ void test_data(const std::string& input, const std::string& output)
     raxmlng_reader reader(input);
     auto matrices = reader.read();
 
-    const size_t sample_size = 100;
+    //std::unordered_map<std::string, matrix> sample = matrices;
+
+    //const size_t sample_size = 100;
+    const size_t sample_size = 20;
     std::unordered_map<std::string, matrix> sample;
     std::sample(matrices.begin(), matrices.end(), std::inserter(sample, sample.begin()),
                 sample_size, std::mt19937{std::random_device{}()});
@@ -414,49 +495,86 @@ void test_data(const std::string& input, const std::string& output)
             std::cout << "\r\tRunning for node " << node << ", " << node_i << " / " << matrices.size() << "..." << std::flush;
         }
 
-        map_t map;
-        //map.reserve(std::pow(sigma, 10));
-
         //auto parameters = params_default;
         //auto parameters = params_omega_1;
-        auto parameters = params_omega_1_5;
+        auto parameters = params_omega_1_5_even_k;
+        //auto parameters = params_omega_0;
+        //auto parameters = params_omega_1_5;
         //auto parameters = params;
         //auto parameters = params_one_k;
         for (const auto& [k, omega] : parameters)
         {
-            for (const auto& window : to_windows(matrix, k))
+
+            std::vector<phylo_kmer> prefixes;
+            for (const auto& window : chain_windows(matrix, k))
+            //for (const auto& window : to_windows(matrix, k))
             {
                 //map.clear();
-
+/*
                 auto begin = std::chrono::steady_clock::now();
-                branch_and_bound bb(map, window, k);
+                branch_and_bound bb(window, k);
                 bb.run(omega);
                 auto end = std::chrono::steady_clock::now();
                 long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                 stats.push_back({
                                     algorithm::bb,
-                                    bb.get_result().size(), bb_time,
+                                    bb.get_num_kmers(), bb_time,
                                     k, omega,
                                     node,
                                     window.get_position()
                                 });
-
+*/
                 //map.clear();
 
-                begin = std::chrono::steady_clock::now();
-                divide_and_conquer dc(map, window, k);
+                auto begin = std::chrono::steady_clock::now();
+                divide_and_conquer dc(window, k);
                 dc.run(omega);
-                end = std::chrono::steady_clock::now();
+                auto end = std::chrono::steady_clock::now();
                 long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                 stats.push_back({
                                     algorithm::dc,
-                                    dc.get_result().size(), dc_time,
+                                    dc.get_num_kmers(), dc_time,
                                     k, omega,
                                     node,
                                     window.get_position()
                                 });
 
+
+                dccw dccw(window, prefixes, k);
+                begin = std::chrono::steady_clock::now();
+                dccw.run(omega);
+                end = std::chrono::steady_clock::now();
+                long dccw_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::dccw,
+                                    dccw.get_num_kmers(),
+                                    dccw_time,
+                                    k, omega,
+                                    node,
+                                    window.get_position()
+                                });
+                prefixes = std::move(dccw.get_suffixes());
+
+
+                /*
+
+                baseline bl(window, k, dc.get_num_kmers());
+                begin = std::chrono::steady_clock::now();
+                bl.run(omega);
+                end = std::chrono::steady_clock::now();
+                long bl_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                stats.push_back({
+                                    algorithm::baseline,
+                                    //dc.get_map().size(),
+                                    bl.get_num_kmers(),
+                                    bl_time,
+                                    k, omega,
+                                    node,
+                                    window.get_position()
+                                });
+*/
                 //assert_equal(bb.get_result(), dc.get_result());
+                //assert_equal(dc.get_result(), dccw.get_result());
                 //check_size(bb.get_result(), dc.get_result());
             }
         }
@@ -481,6 +599,7 @@ int main(int argc, char** argv)
     //test_suite();
 
     test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+
 /*
     if (argc > 1)
     {

@@ -7,7 +7,7 @@
 class branch_and_bound
 {
 public:
-    branch_and_bound(map_t& map, const window& window, size_t k);
+    branch_and_bound(const window& window, size_t k);
     void run(score_t omega);
     bb_return bb(size_t i, size_t j, code_t prefix, score_t score, score_t eps);
     const map_t& get_map();
@@ -18,8 +18,10 @@ public:
 
     size_t get_num_kmers() const;
 private:
+
+    void preprocess();
+
     const window& _window;
-    map_t& _map;
     size_t _k;
     std::vector<score_t> _best_suffix_score;
     std::vector<bb_return> _returns;
@@ -49,5 +51,23 @@ private:
     size_t _k;
 };*/
 
+
+class baseline
+{
+public:
+    baseline(const window& window, size_t k, size_t num_kmers);
+    void run(score_t omega);
+
+    const std::vector<phylo_kmer>& get_result() const;
+
+    size_t get_num_kmers() const;
+
+private:
+    const window& _window;
+    size_t _k;
+
+    size_t _num_kmers;
+    std::vector<phylo_kmer> _result_list;
+};
 
 #endif //XPAS_ALGS_BB_H

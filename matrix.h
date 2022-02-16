@@ -112,6 +112,45 @@ namespace impl
 
         size_t _current_pos;
     };
+
+    class chained_window_iterator
+    {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using reference = window&;
+
+        chained_window_iterator(matrix& matrix, size_t kmer_size);
+        chained_window_iterator(const chained_window_iterator&) = delete;
+        chained_window_iterator(window_iterator&&) = delete;
+        chained_window_iterator& operator=(const chained_window_iterator&) = delete;
+        chained_window_iterator& operator=(chained_window_iterator&&) = delete;
+        ~chained_window_iterator() = default;
+
+        chained_window_iterator& operator++();
+
+        bool operator==(const chained_window_iterator& rhs) const noexcept;
+        bool operator!=(const chained_window_iterator& rhs) const noexcept;
+
+        reference operator*() noexcept;
+    private:
+        void update_next_previous_windows();
+
+        matrix& _matrix;
+
+        window _window;
+        window _previous_window;
+        window _next_window;
+
+        size_t _kmer_size;
+
+        size_t _current_pos;
+
+        // the first position j of the current chain of windows
+        size_t _first_window_pos;
+
+        // the first position j of the last chain possible
+        size_t _last_chain_pos;
+    };
 }
 
 class to_windows
@@ -145,7 +184,7 @@ class chain_windows
 {
 public:
     using iterator_category = std::forward_iterator_tag;
-    using const_iterator = impl::window_iterator;
+    using const_iterator = impl::chained_window_iterator;
 
     using reference = window&;
 
