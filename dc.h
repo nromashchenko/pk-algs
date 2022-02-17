@@ -44,7 +44,7 @@ private:
 class dccw
 {
 public:
-    dccw(const window& window, std::vector<phylo_kmer>& prefixes, size_t k, score_t lookahead, score_t lookbehind);
+    dccw(const window& window, std::vector<phylo_kmer>& prefixes, size_t k, score_t lookbehind, score_t lookahead);
     void run(score_t omega);
 
     const map_t& get_map();

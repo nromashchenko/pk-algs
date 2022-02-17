@@ -247,7 +247,7 @@ void test_one(size_t k, bool print=true)
         {
             std::cout << j << ":" << e << std::endl;
         }*/
-
+/*
         bbe bbe(window, std::move(get_order(window)), k);
         bbe.run(omega);
         if (print)
@@ -256,8 +256,7 @@ void test_one(size_t k, bool print=true)
             std::cout << "Branch-and-bound Sorted, generated: " << bbe.get_result().size() << std::endl;
         }
 
-        assert_equal(bb.get_result(), bbe.get_result());
-
+        assert_equal(bb.get_result(), bbe.get_result());*/
 
         divide_and_conquer dc(window, k);
         dc.run(omega);
@@ -280,12 +279,10 @@ void test_one(size_t k, bool print=true)
         matrix.sort();*/
 
 
-        assert_equal(bb.get_result(), bbe.get_result());
         assert_equal(bb.get_result(), dc.get_result());
         //assert_equal(dc.get_result(), dccw.get_result());
 
         //assert_equal(bb.get_map(), bf.get_map());
-        //assert_equal(dc.get_map(), bf.get_map());
         //assert_equal(rap.get_map(), bf.get_map());
     }
 
@@ -406,17 +403,6 @@ void print_returns(const std::vector<bb_stats>& stats, const std::string& filena
     std::cout << std::endl;
 }
 
-score_t range_product(const matrix& matrix, size_t start_pos, size_t len)
-{
-    score_t result = 1.0f;
-
-    for (size_t i = start_pos; i < start_pos + len; ++i)
-    {
-        result *= 1.0;//matrix[i];
-    }
-    return result;
-}
-
 void test_random(size_t num_iter, const std::string& filename)
 {
     const auto node_name = "Random" + std::to_string(num_iter);
@@ -444,14 +430,7 @@ void test_random(size_t num_iter, const std::string& filename)
 
             std::vector<phylo_kmer> prefixes;
 
-            // Compute the lookbehind and lookahead scores
-            score_t lookahead = 1.0f;
-            score_t lookbehind = 1.0f;
-            //for (size_t )
-
-
-
-            for (const auto& window : chain_windows(matrix, k))
+            for (const auto& [prev, window, next] : chain_windows(matrix, k))
             //for (const auto& window : to_windows(matrix, k))
             {
                 //map.clear();
@@ -470,7 +449,7 @@ void test_random(size_t num_iter, const std::string& filename)
                                     window.get_position()
                                 });
                 bb_stats.push_back({ k, omega, bb.get_returns()});
-
+/*
                 bbe bbe(window, std::move(get_order(window)), k);
                 begin = std::chrono::steady_clock::now();
                 bbe.run(omega);
@@ -483,7 +462,7 @@ void test_random(size_t num_iter, const std::string& filename)
                                     k, omega,
                                     node_name,
                                     window.get_position()
-                                });
+                                });*/
 
                 //assert_equal(bb.get_result(), bbe.get_result());
 
@@ -502,6 +481,8 @@ void test_random(size_t num_iter, const std::string& filename)
                                     node_name,
                                     window.get_position()
                                 });
+                assert_equal(bb.get_result(), dc.get_result());
+
 /*
                 baseline bl(window, k, dc.get_num_kmers());
                 begin = std::chrono::steady_clock::now();
@@ -517,8 +498,24 @@ void test_random(size_t num_iter, const std::string& filename)
                                     node_name,
                                     window.get_position()
                                 });*/
-/*
-                dccw dccw(window, prefixes, k, 1.0, 1.0);
+
+
+                score_t lookbehind = get_threshold(omega, k);
+                if (prev.get_position() < window.get_position())
+                {
+                    lookbehind = prev.range_product(0, k / 2);;
+                }
+                else
+                {
+                    prefixes.clear();
+                }
+                score_t lookahead = get_threshold(omega, k);
+                if (next.get_position() > window.get_position())
+                {
+                    lookahead = next.range_product(k / 2, k - k / 2);
+                }
+
+                dccw dccw(window, prefixes, k, lookbehind, lookahead);
                 begin = std::chrono::steady_clock::now();
                 dccw.run(omega);
                 end = std::chrono::steady_clock::now();
@@ -532,9 +529,10 @@ void test_random(size_t num_iter, const std::string& filename)
                                     window.get_position()
                                 });
                 prefixes = std::move(dccw.get_suffixes());
-*/
+                assert_equal(dc.get_result(), dccw.get_result());
 
-                //assert_equal(bb.get_result(), dc.get_result());
+
+
                 //assert_equal(dc.get_result(), dccw.get_result());
                 //assert_equal(bb.get_map(), rap.get_map());
             }
@@ -579,7 +577,7 @@ void test_data(const std::string& input, const std::string& output)
         {
 
             std::vector<phylo_kmer> prefixes;
-            for (const auto& window : chain_windows(matrix, k))
+            for (const auto& [prev, window, next] : chain_windows(matrix, k))
             //for (const auto& window : to_windows(matrix, k))
             {
                 //map.clear();
@@ -626,7 +624,7 @@ void test_data(const std::string& input, const std::string& output)
                                 });
 
 /*
-                dccw dccw(window, prefixes, k, 1.0, 1.0);
+                dccw dccw(window, prefixes, k, ,);
                 begin = std::chrono::steady_clock::now();
                 dccw.run(omega);
                 end = std::chrono::steady_clock::now();
@@ -684,9 +682,9 @@ int main(int argc, char** argv)
     //test_one(10);
     //test_suite();
 
-    //test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+    test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
 
-
+/*
     if (argc > 1)
     {
         std::string filename = argv[1];
@@ -697,6 +695,6 @@ int main(int argc, char** argv)
         std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
         std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
     }
-
+*/
     return 0;
 }

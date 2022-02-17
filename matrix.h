@@ -64,11 +64,8 @@ public:
 
     size_t get_position() const;
 
-    /*
-    void sort();
+    score_t range_product(size_t start_pos, size_t len) const;
 
-    bool is_sorted() const;
-*/
     [[nodiscard]]
     std::pair<size_t, score_t> max_at(size_t column) const;
 
@@ -82,6 +79,8 @@ private:
     matrix& _matrix;
     size_t _start_pos;
     size_t _size;
+
+    std::vector<score_t> _best_scores;
 };
 
 namespace impl
@@ -133,9 +132,9 @@ namespace impl
         bool operator==(const chained_window_iterator& rhs) const noexcept;
         bool operator!=(const chained_window_iterator& rhs) const noexcept;
 
-        reference operator*() noexcept;
+        std::tuple<reference, reference, reference> operator*() noexcept;
     private:
-        void update_next_previous_windows();
+        window _get_next_window();
 
         matrix& _matrix;
 

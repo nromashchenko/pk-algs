@@ -139,7 +139,14 @@ std::vector<std::vector<size_t>> matrix::get_order() const
 window::window(matrix& m, size_t start_pos, size_t size)
     : _matrix(m), _start_pos(start_pos), _size(size)
 {
-
+    _best_scores = std::vector<score_t>(size + 1, 1.0f);
+    score_t product = 1.0f;
+    for (size_t j = 0; j < size; ++j)
+    {
+        const auto& [index_best, score_best] = max_at(j);
+        product *= score_best;
+        _best_scores[j + 1] = product;
+    }
 }
 
 window& window::operator=(const window& other)
@@ -149,6 +156,7 @@ window& window::operator=(const window& other)
         _matrix = other._matrix;
         _start_pos = other._start_pos;
         _size = other._size;
+        _best_scores = other._best_scores;
     }
     return *this;
 }
@@ -183,6 +191,11 @@ bool window::empty() const
 size_t window::get_position() const
 {
     return _start_pos;
+}
+
+score_t window::range_product(size_t start_pos, size_t len) const
+{
+    return _best_scores[start_pos + len] / _best_scores[start_pos];
 }
 
 matrix::column window::get_column(size_t j) const
@@ -259,11 +272,40 @@ impl::chained_window_iterator::chained_window_iterator(matrix& matrix, size_t km
     _last_chain_pos = _kmer_size / 2 - 1;
     _first_window_pos = 0;
 
-    // Find if there is a previous window
-    //update_next_previous_windows();
+    // There is no previous window
+    _previous_window = window(_matrix, 0, 0);
+
+    const auto prefix_size = _kmer_size / 2;
+    const auto suffix_size = _kmer_size - prefix_size;
+    /// see if the next window is in the current chain
+    if (size_t(_current_pos + suffix_size + _kmer_size) < _matrix.width())
+    {
+        _current_pos += suffix_size;
+        _next_window = { _matrix, _current_pos, _kmer_size };
+    }
+    /// if not, see if there is another chain
+    else if ((_first_window_pos + 1 <= _last_chain_pos) && _first_window_pos + 1 + _kmer_size < _matrix.width())
+    {
+        ++_first_window_pos;
+        _current_pos = _first_window_pos;
+        _next_window = { _matrix, _current_pos, _kmer_size };
+    }
+    /// otherwise, there is only one window
+    else
+    {
+        _next_window = { _matrix, 0, 0 };
+    }
 }
 
 impl::chained_window_iterator& impl::chained_window_iterator::operator++()
+{
+    _previous_window = _window;
+    _window = _next_window;
+    _next_window = _get_next_window();
+    return *this;
+}
+
+window impl::chained_window_iterator::_get_next_window()
 {
     /// Size of prefixes saved from the last window
     /// Only even k
@@ -274,7 +316,7 @@ impl::chained_window_iterator& impl::chained_window_iterator::operator++()
     if (size_t(_current_pos + suffix_size + _kmer_size) < _matrix.width())
     {
         _current_pos += suffix_size;
-        _window = window(_matrix, _current_pos, _kmer_size);
+        return { _matrix, _current_pos, _kmer_size };
     }
     /// if the chain is over, start the next one if possible
     else if ((_first_window_pos + 1 <= _last_chain_pos) && _first_window_pos + 1 + _kmer_size < _matrix.width())
@@ -282,22 +324,14 @@ impl::chained_window_iterator& impl::chained_window_iterator::operator++()
         ++_first_window_pos;
 
         _current_pos = _first_window_pos;
-        _window = window(_matrix, _current_pos, _kmer_size);
+        return { _matrix, _current_pos, _kmer_size};
     }
     /// otherwise, the iterator is over
     else
     {
-        _window = window(_matrix, 0, 0);
         _kmer_size = 0;
+        return { _matrix, 0, 0 };
     }
-
-    return *this;
-}
-
-
-void impl::chained_window_iterator::update_next_previous_windows()
-{
-
 }
 
 
@@ -311,11 +345,10 @@ bool impl::chained_window_iterator::operator!=(const chained_window_iterator& rh
     return !(*this == rhs);
 }
 
-impl::chained_window_iterator::reference impl::chained_window_iterator::operator*() noexcept
+std::tuple<window&, window&, window&> impl::chained_window_iterator::operator*() noexcept
 {
-    return _window;
+    return { _previous_window, _window, _next_window };
 }
-
 
 
 to_windows::to_windows(matrix& matrix, size_t kmer_size)
