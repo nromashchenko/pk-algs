@@ -481,7 +481,7 @@ void test_random(size_t num_iter, const std::string& filename)
                                     node_name,
                                     window.get_position()
                                 });
-                assert_equal(bb.get_result(), dc.get_result());
+                //assert_equal(bb.get_result(), dc.get_result());
 
 /*
                 baseline bl(window, k, dc.get_num_kmers());
@@ -529,10 +529,6 @@ void test_random(size_t num_iter, const std::string& filename)
                                     window.get_position()
                                 });
                 prefixes = std::move(dccw.get_suffixes());
-                assert_equal(dc.get_result(), dccw.get_result());
-
-
-
                 //assert_equal(dc.get_result(), dccw.get_result());
                 //assert_equal(bb.get_map(), rap.get_map());
             }
@@ -549,14 +545,14 @@ void test_data(const std::string& input, const std::string& output)
     raxmlng_reader reader(input);
     auto matrices = reader.read();
 
-    //std::unordered_map<std::string, matrix> sample = matrices;
+    std::unordered_map<std::string, matrix> sample = matrices;
 
     //const size_t sample_size = 100;
-    const size_t sample_size = 10;
+    /*const size_t sample_size = 10;
     std::unordered_map<std::string, matrix> sample;
     std::sample(matrices.begin(), matrices.end(), std::inserter(sample, sample.begin()),
                 sample_size, std::mt19937{std::random_device{}()});
-
+*/
     std::vector<run_stats> stats;
     size_t node_i = 0;
     for (auto& [node, matrix] : sample)
@@ -567,8 +563,8 @@ void test_data(const std::string& input, const std::string& output)
         }
 
         //auto parameters = params_default;
-        auto parameters = params_omega_1_even_k;
-        //auto parameters = params_omega_1_5_even_k;
+        //auto parameters = params_omega_1_even_k;
+        auto parameters = params_omega_1_5_even_k;
         //auto parameters = params_omega_0;
         //auto parameters = params_omega_1_5;
         //auto parameters = params;
@@ -595,7 +591,7 @@ void test_data(const std::string& input, const std::string& output)
                                     window.get_position()
                                 });
 
-                //map.clear();
+                /*
                 bbe bbe(window, std::move(get_order(window)), k);
                 begin = std::chrono::steady_clock::now();
                 bbe.run(omega);
@@ -609,6 +605,7 @@ void test_data(const std::string& input, const std::string& output)
                                     node,
                                     window.get_position()
                                 });
+*/
 
                 begin = std::chrono::steady_clock::now();
                 divide_and_conquer dc(window, k);
@@ -623,8 +620,23 @@ void test_data(const std::string& input, const std::string& output)
                                     window.get_position()
                                 });
 
-/*
-                dccw dccw(window, prefixes, k, ,);
+
+                score_t lookbehind = get_threshold(omega, k);
+                if (prev.get_position() < window.get_position())
+                {
+                    lookbehind = prev.range_product(0, k / 2);;
+                }
+                else
+                {
+                    prefixes.clear();
+                }
+                score_t lookahead = get_threshold(omega, k);
+                if (next.get_position() > window.get_position())
+                {
+                    lookahead = next.range_product(k / 2, k - k / 2);
+                }
+
+                dccw dccw(window, prefixes, k, lookbehind, lookahead);
                 begin = std::chrono::steady_clock::now();
                 dccw.run(omega);
                 end = std::chrono::steady_clock::now();
@@ -639,7 +651,6 @@ void test_data(const std::string& input, const std::string& output)
                                 });
                 prefixes = std::move(dccw.get_suffixes());
 
-*/
                 /*
 
                 baseline bl(window, k, dc.get_num_kmers());
@@ -682,9 +693,9 @@ int main(int argc, char** argv)
     //test_one(10);
     //test_suite();
 
-    test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+    //test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
 
-/*
+
     if (argc > 1)
     {
         std::string filename = argv[1];
@@ -695,6 +706,6 @@ int main(int argc, char** argv)
         std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
         std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
     }
-*/
+
     return 0;
 }
