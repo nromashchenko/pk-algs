@@ -63,14 +63,34 @@ std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h
         auto min = prefix_sort ? l : r;
         auto max = prefix_sort ? r : l;
 
+        auto eps_min = prefix_sort ? eps_l : eps_r;
+        auto eps_max = prefix_sort ? eps_r : eps_l;
+
         if (!min.empty())
         {
             std::sort(min.begin(), min.end(), kmer_score_comparator);
 
-            for (const auto& [a, a_score] : max)
+            //for (const auto& [a, a_score] : max)
+            //{
+            size_t i = 0;
+            while (i < max.size())
             {
-                for (const auto& [b, b_score] : min)
+                const auto& [a, a_score] = max[i];
+                if (a_score < eps_max)
                 {
+                    break;
+                }
+
+                size_t i2 = 0;
+                while (i2 < min.size())
+                {
+                    const auto& [b, b_score] = min[i2];
+                    if (b_score < eps_min)
+                    {
+                        break;
+                    }
+                //for (const auto& [b, b_score] : min)
+                //{
                     //const auto score = prefix_score + suffix_score;
                     const auto score = a_score * b_score;
                     if (score <= eps)
@@ -88,7 +108,10 @@ std::vector<phylo_kmer> divide_and_conquer::dc(score_t omega, size_t j, size_t h
                         kmer = (a << ((h - h / 2) * 2)) | b;
                     }
                     result.push_back({ kmer, score });
+
+                    i2++;
                 }
+                i++;
             }
         }
         return result;

@@ -5,6 +5,7 @@
 #include <cassert>
 #include <chrono>
 #include <fstream>
+#include <iterator>
 
 #include "common.h"
 #include "dc.h"
@@ -540,12 +541,36 @@ void test_random(size_t num_iter, const std::string& filename)
     print_returns(bb_stats, "returns.txt");
 }
 
-void test_data(const std::string& input, const std::string& output)
+
+std::vector<std::string> get_ghost_ids(const std::string& filename)
 {
+    std::vector<std::string> result;
+    std::ifstream file(filename);
+
+    std::copy(std::istream_iterator<std::string>(file),
+              std::istream_iterator<std::string>(),
+              back_inserter(result));
+    return result;
+}
+
+
+void test_data(const std::string& input, const std::string& ghost_ids_file, const std::string& output)
+{
+    const auto ghost_ids = get_ghost_ids(ghost_ids_file);
+
     raxmlng_reader reader(input);
     auto matrices = reader.read();
 
-    std::unordered_map<std::string, matrix> sample = matrices;
+    std::unordered_map<std::string, matrix> sample;
+    for (const auto& [k, v] : matrices)
+    {
+        if (const auto& it = std::find(ghost_ids.begin(), ghost_ids.end(), k); it != ghost_ids.end())
+        {
+            sample[k] = v;
+        }
+    }
+
+    std::cout << "Num matrices: " << sample.size() << std::endl;
 
     //const size_t sample_size = 100;
     /*const size_t sample_size = 10;
@@ -559,7 +584,7 @@ void test_data(const std::string& input, const std::string& output)
     {
         if (node_i % 1 == 0)
         {
-            std::cout << "\r\tRunning for node " << node << ", " << node_i << " / " << matrices.size() << "..." << std::flush;
+            std::cout << "\r\tRunning for node " << node << ", " << node_i << " / " << sample.size() << "..." << std::flush;
         }
 
         //auto parameters = params_default;
@@ -676,7 +701,7 @@ void test_data(const std::string& input, const std::string& output)
 
         if (node_i % 1 == 0)
         {
-            std::cout << "\r\tRunning for node " << node << ", " << node_i << " / " << matrices.size() << ". Done.\n"
+            std::cout << "\r\tRunning for node " << node << ", " << node_i << " / `" << sample.size() << ". Done.\n"
                       << std::flush;
         }
         node_i++;
@@ -685,7 +710,6 @@ void test_data(const std::string& input, const std::string& output)
     print_as_csv(stats, output);
 }
 
-
 int main(int argc, char** argv)
 {
     srand(42);
@@ -693,13 +717,14 @@ int main(int argc, char** argv)
     //test_one(10);
     //test_suite();
 
-    //test_random(100, std::string(std::tmpnam(nullptr)) + ".csv");
+    //test_random(1000, std::string(std::tmpnam(nullptr)) + ".csv");
 
 
-    if (argc > 1)
+    if (argc > 2)
     {
         std::string filename = argv[1];
-        test_data(filename, std::string(std::tmpnam(nullptr)) + ".csv");
+        std::string ghost_ids_file = argv[2];
+        test_data(filename, ghost_ids_file, std::string(std::tmpnam(nullptr)) + ".csv");
     }
     else
     {
