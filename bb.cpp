@@ -115,6 +115,11 @@ const std::vector<phylo_kmer>& branch_and_bound::get_result() const
     return _result_list;
 }
 
+std::vector<phylo_kmer>&& branch_and_bound::get_result()
+{
+    return std::move(_result_list);
+}
+
 size_t branch_and_bound::get_num_kmers() const
 {
     return _result_list.size();

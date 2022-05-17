@@ -16,6 +16,8 @@ public:
 
     const std::vector<phylo_kmer>& get_result() const;
 
+    std::vector<phylo_kmer>&& get_result();
+
     size_t get_num_kmers() const;
 private:
 

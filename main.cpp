@@ -14,6 +14,11 @@
 #include "ar.h"
 
 
+constexpr bool RUN_BB = false;
+constexpr bool RUN_DC = true;
+constexpr bool RUN_DCCW = false;
+
+
 struct run_params
 {
     size_t k;
@@ -76,7 +81,7 @@ const size_t const_k = 10;
 
 const std::vector<run_params> params_default =
     {
-        { 10, 1.0},
+        { 10, 1.5 },
     };
 
 
@@ -136,6 +141,16 @@ const std::vector<run_params> params_omega_0 =
         { 8, 0},
     };
 
+const std::vector<run_params> params_test =
+    {
+        { 4, 1.0},
+        { 6, 1.0},
+        { 8, 1.0},
+        { 4, 1.5},
+        { 6, 1.5},
+        { 8, 1.5},
+    };
+
 void print_map(const map_t& map)
 {
     for (const auto& [kmer, score] : map)
@@ -168,7 +183,7 @@ void assert_equal_map(const map_t& map1, const map_t& map2)
 
 void assert_equal(const std::vector<phylo_kmer>& a, const std::vector<phylo_kmer>& b)
 {
-    //assert(a.size() == b.size());
+    assert(a.size() == b.size());
 
     std::unordered_map<code_t, score_t> map_a;
     for (const auto& [kmer, score] : a)
@@ -404,19 +419,93 @@ void print_returns(const std::vector<bb_stats>& stats, const std::string& filena
     std::cout << std::endl;
 }
 
-void test_random(size_t num_iter, const std::string& filename)
+std::tuple<std::vector<phylo_kmer>, run_stats> run_bb(const window& window, size_t k, float omega,
+                                                            const std::string& node_name)
+{
+    branch_and_bound bb(window, k);
+    auto begin = std::chrono::steady_clock::now();
+    bb.run(omega);
+    auto end = std::chrono::steady_clock::now();
+    long time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    const auto stats = run_stats{
+                             algorithm::bb,
+                             bb.get_num_kmers(),
+                             time,
+                             k, omega,
+                             node_name,
+                             window.get_position()
+                         };
+    return { bb.get_result(), stats };
+}
+
+std::tuple<std::vector<phylo_kmer>, run_stats> run_dc(const window& window, size_t k, float omega,
+                                                      const std::string& node_name)
+{
+    divide_and_conquer dc(window, k);
+    auto begin = std::chrono::steady_clock::now();
+    dc.run(omega);
+    auto end = std::chrono::steady_clock::now();
+    long time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    const auto stats = run_stats{
+        algorithm::dc,
+        dc.get_num_kmers(),
+        time,
+        k, omega,
+        node_name,
+        window.get_position()
+    };
+    return { dc.get_result(), stats };
+}
+
+std::tuple<std::vector<phylo_kmer>, run_stats> run_dccw(std::vector<phylo_kmer>& prefixes,
+                                                        const window& prev, const window& current, const window& next,
+                                                        size_t k, float omega,
+                                                        const std::string& node_name)
+{
+    score_t lookbehind = get_threshold(omega, k);
+    if (prev.get_position() < current.get_position())
+    {
+        lookbehind = prev.range_product(0, k / 2);;
+    }
+    else
+    {
+        prefixes.clear();
+    }
+    score_t lookahead = get_threshold(omega, k);
+    if (next.get_position() > current.get_position())
+    {
+        lookahead = next.range_product(k / 2, k - k / 2);
+    }
+
+    dccw dccw(current, prefixes, k, lookbehind, lookahead);
+    auto begin = std::chrono::steady_clock::now();
+    dccw.run(omega);
+    auto end = std::chrono::steady_clock::now();
+    long time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    prefixes = std::move(dccw.get_suffixes());
+
+    const auto stats = run_stats{
+        algorithm::dccw,
+        dccw.get_num_kmers(),
+        time,
+        k, omega,
+        node_name,
+        current.get_position()
+    };
+    return { dccw.get_result(), stats };
+}
+
+void test_random(const std::vector<run_params>& parameters, size_t num_iter, const std::string& filename)
 {
     const auto node_name = "Random" + std::to_string(num_iter);
 
     std::vector<run_stats> stats;
-    std::vector<bb_stats> bb_stats;
 
-    //const auto parameters = params;
-    //const auto parameters = params_one_k;
-    //const auto parameters = params_omega_1;
-    //const auto parameters = params_omega_1_5;
-    const auto parameters = params_omega_1_5_even_k;
-    //const auto parameters = params_omega_0;
+    /// for debugging
+    std::vector<phylo_kmer> bb_result;
+    std::vector<phylo_kmer> dc_result;
+    std::vector<phylo_kmer> dccw_result;
+    (void)bb_result; (void)dc_result; (void)dccw_result;
 
 
     for (const auto& [k, omega] : parameters)
@@ -425,120 +514,43 @@ void test_random(size_t num_iter, const std::string& filename)
         {
             std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". " << i << " / " << num_iter << "..." << std::flush;
 
-            //auto matrix = generate(5 * k);
             auto matrix = generate(1000);
-            //auto matrix = generate(10);
 
             std::vector<phylo_kmer> prefixes;
 
             for (const auto& [prev, window, next] : chain_windows(matrix, k))
             //for (const auto& window : to_windows(matrix, k))
             {
-                //map.clear();
-                branch_and_bound bb(window, k);
-                auto begin = std::chrono::steady_clock::now();
-                bb.run(omega);
-                auto end = std::chrono::steady_clock::now();
-                long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::bb,
-                                    //bb.get_map().size(),
-                                    bb.get_num_kmers(),
-                                    bb_time,
-                                    k, omega,
-                                    node_name,
-                                    window.get_position()
-                                });
-                bb_stats.push_back({ k, omega, bb.get_returns()});
-/*
-                bbe bbe(window, std::move(get_order(window)), k);
-                begin = std::chrono::steady_clock::now();
-                bbe.run(omega);
-                end = std::chrono::steady_clock::now();
-                long bbe_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::bbe,
-                                    bbe.get_num_kmers(),
-                                    bbe_time,
-                                    k, omega,
-                                    node_name,
-                                    window.get_position()
-                                });*/
-
-                //assert_equal(bb.get_result(), bbe.get_result());
-
-                //map.clear();
-                divide_and_conquer dc(window, k);
-                begin = std::chrono::steady_clock::now();
-                dc.run(omega);
-                end = std::chrono::steady_clock::now();
-                long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::dc,
-                                    //dc.get_map().size(),
-                                    dc.get_num_kmers(),
-                                    dc_time,
-                                    k, omega,
-                                    node_name,
-                                    window.get_position()
-                                });
-                //assert_equal(bb.get_result(), dc.get_result());
-
-/*
-                baseline bl(window, k, dc.get_num_kmers());
-                begin = std::chrono::steady_clock::now();
-                bl.run(omega);
-                end = std::chrono::steady_clock::now();
-                long bl_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::baseline,
-                                    //dc.get_map().size(),
-                                    bl.get_num_kmers(),
-                                    bl_time,
-                                    k, omega,
-                                    node_name,
-                                    window.get_position()
-                                });*/
-
-
-                score_t lookbehind = get_threshold(omega, k);
-                if (prev.get_position() < window.get_position())
+                if (RUN_BB)
                 {
-                    lookbehind = prev.range_product(0, k / 2);;
-                }
-                else
-                {
-                    prefixes.clear();
-                }
-                score_t lookahead = get_threshold(omega, k);
-                if (next.get_position() > window.get_position())
-                {
-                    lookahead = next.range_product(k / 2, k - k / 2);
+                    const auto& [result, stat] = run_bb(window, k, omega, node_name);
+                    stats.push_back(stat);
+                    bb_result = result;
                 }
 
-                dccw dccw(window, prefixes, k, lookbehind, lookahead);
-                begin = std::chrono::steady_clock::now();
-                dccw.run(omega);
-                end = std::chrono::steady_clock::now();
-                long dccw_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::dccw,
-                                    dccw.get_num_kmers(),
-                                    dccw_time,
-                                    k, omega,
-                                    node_name,
-                                    window.get_position()
-                                });
-                prefixes = std::move(dccw.get_suffixes());
-                //assert_equal(dc.get_result(), dccw.get_result());
-                //assert_equal(bb.get_map(), rap.get_map());
+                if (RUN_DC)
+                {
+                    const auto& [result, stat] = run_dc(window, k, omega, node_name);
+                    stats.push_back(stat);
+                    dc_result = result;
+                }
+
+                if (RUN_DCCW)
+                {
+                    const auto& [result, stat] = run_dccw(prefixes, prev, window, next, k, omega, node_name);
+                    stats.push_back(stat);
+                    dccw_result = result;
+                }
+
+                //assert_equal(bb_result, dc_result);
+                //assert_equal(dc_result, dccw_result);
             }
         }
         std::cout << "\r\tRunning for k = " << k << ", omega = " << omega << ". Done." << std::endl;
     }
 
     print_as_csv(stats, filename);
-    print_returns(bb_stats, "returns.txt");
+    //print_returns(bb_stats, "returns.txt");
 }
 
 
@@ -553,8 +565,8 @@ std::vector<std::string> get_ghost_ids(const std::string& filename)
     return result;
 }
 
-
-void test_data(const std::string& input, const std::string& ghost_ids_file, const std::string& output)
+void test_data(const std::vector<run_params>& parameters, const std::string& input,
+               const std::string& ghost_ids_file, const std::string& output)
 {
     const auto ghost_ids = get_ghost_ids(ghost_ids_file);
 
@@ -570,30 +582,23 @@ void test_data(const std::string& input, const std::string& ghost_ids_file, cons
         }
     }
 
+    /// for debugging
+    std::vector<phylo_kmer> bb_result;
+    std::vector<phylo_kmer> dc_result;
+    std::vector<phylo_kmer> dccw_result;
+    (void)bb_result; (void)dc_result; (void)dccw_result;
+
     std::cout << "Num matrices: " << sample.size() << std::endl;
 
-    //const size_t sample_size = 100;
-    /*const size_t sample_size = 10;
-    std::unordered_map<std::string, matrix> sample;
-    std::sample(matrices.begin(), matrices.end(), std::inserter(sample, sample.begin()),
-                sample_size, std::mt19937{std::random_device{}()});
-*/
     std::vector<run_stats> stats;
     size_t node_i = 0;
-    for (auto& [node, matrix] : sample)
+    for (auto& [node_name, matrix] : sample)
     {
         if (node_i % 1 == 0)
         {
-            std::cout << "\r\tRunning for node " << node << ", " << node_i << " / " << sample.size() << "..." << std::flush;
+            std::cout << "\r\tRunning for node " << node_name << ", " << node_i << " / " << sample.size() << "..." << std::flush;
         }
 
-        //auto parameters = params_default;
-        //auto parameters = params_omega_1_even_k;
-        auto parameters = params_omega_1_5_even_k;
-        //auto parameters = params_omega_0;
-        //auto parameters = params_omega_1_5;
-        //auto parameters = params;
-        //auto parameters = params_one_k;
         for (const auto& [k, omega] : parameters)
         {
 
@@ -601,107 +606,35 @@ void test_data(const std::string& input, const std::string& ghost_ids_file, cons
             for (const auto& [prev, window, next] : chain_windows(matrix, k))
             //for (const auto& window : to_windows(matrix, k))
             {
-                //map.clear();
-
-                auto begin = std::chrono::steady_clock::now();
-                branch_and_bound bb(window, k);
-                bb.run(omega);
-                auto end = std::chrono::steady_clock::now();
-                long bb_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::bb,
-                                    bb.get_num_kmers(), bb_time,
-                                    k, omega,
-                                    node,
-                                    window.get_position()
-                                });
-
-                /*
-                bbe bbe(window, std::move(get_order(window)), k);
-                begin = std::chrono::steady_clock::now();
-                bbe.run(omega);
-                end = std::chrono::steady_clock::now();
-                long bbe_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::bbe,
-                                    bbe.get_num_kmers(),
-                                    bbe_time,
-                                    k, omega,
-                                    node,
-                                    window.get_position()
-                                });
-*/
-
-                begin = std::chrono::steady_clock::now();
-                divide_and_conquer dc(window, k);
-                dc.run(omega);
-                end = std::chrono::steady_clock::now();
-                long dc_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::dc,
-                                    dc.get_num_kmers(), dc_time,
-                                    k, omega,
-                                    node,
-                                    window.get_position()
-                                });
-
-
-                score_t lookbehind = get_threshold(omega, k);
-                if (prev.get_position() < window.get_position())
+                if (RUN_BB)
                 {
-                    lookbehind = prev.range_product(0, k / 2);;
-                }
-                else
-                {
-                    prefixes.clear();
-                }
-                score_t lookahead = get_threshold(omega, k);
-                if (next.get_position() > window.get_position())
-                {
-                    lookahead = next.range_product(k / 2, k - k / 2);
+                    const auto& [result, stat] = run_bb(window, k, omega, node_name);
+                    stats.push_back(stat);
+                    bb_result = result;
                 }
 
-                dccw dccw(window, prefixes, k, lookbehind, lookahead);
-                begin = std::chrono::steady_clock::now();
-                dccw.run(omega);
-                end = std::chrono::steady_clock::now();
-                long dccw_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::dccw,
-                                    dccw.get_num_kmers(),
-                                    dccw_time,
-                                    k, omega,
-                                    node,
-                                    window.get_position()
-                                });
-                prefixes = std::move(dccw.get_suffixes());
+                if (RUN_DC)
+                {
+                    const auto& [result, stat] = run_dc(window, k, omega, node_name);
+                    stats.push_back(stat);
+                    dc_result = result;
+                }
 
-                /*
+                if (RUN_DCCW)
+                {
+                    const auto& [result, stat] = run_dccw(prefixes, prev, window, next, k, omega, node_name);
+                    stats.push_back(stat);
+                    dccw_result = result;
+                }
 
-                baseline bl(window, k, dc.get_num_kmers());
-                begin = std::chrono::steady_clock::now();
-                bl.run(omega);
-                end = std::chrono::steady_clock::now();
-                long bl_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-                stats.push_back({
-                                    algorithm::baseline,
-                                    //dc.get_map().size(),
-                                    bl.get_num_kmers(),
-                                    bl_time,
-                                    k, omega,
-                                    node,
-                                    window.get_position()
-                                });
-*/
-                //assert_equal(bb.get_result(), dc.get_result());
-                //assert_equal(dc.get_result(), dccw.get_result());
-                //check_size(bb.get_result(), dc.get_result());
+                //assert_equal(bb_result, dc_result);
+                //assert_equal(dc_result, dccw_result);
             }
         }
 
         if (node_i % 1 == 0)
         {
-            std::cout << "\r\tRunning for node " << node << ", " << node_i << " / `" << sample.size() << ". Done.\n"
+            std::cout << "\r\tRunning for node " << node_name << ", " << node_i << " / " << sample.size() << ". Done.\n"
                       << std::flush;
         }
         node_i++;
@@ -717,20 +650,29 @@ int main(int argc, char** argv)
     //test_one(10);
     //test_suite();
 
-    //test_random(1000, std::string(std::tmpnam(nullptr)) + ".csv");
+    //const auto parameters = params;
+    //const auto parameters = params_test;
+    const auto parameters = params_default;
+    //const auto parameters = params_one_k;
+    //const auto parameters = params_omega_1;
+    //const auto parameters = params_omega_1_5;
+    //const auto parameters = params_omega_1_5_even_k;
+    //const auto parameters = params_omega_0;
 
+    test_random(parameters, 1000, std::string(std::tmpnam(nullptr)) + ".csv");
 
+/*
     if (argc > 2)
     {
         std::string filename = argv[1];
         std::string ghost_ids_file = argv[2];
-        test_data(filename, ghost_ids_file, std::string(std::tmpnam(nullptr)) + ".csv");
+        test_data(parameters, filename, ghost_ids_file, std::string(std::tmpnam(nullptr)) + ".csv");
     }
     else
     {
         std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
         std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
-    }
+    }*/
 
     return 0;
 }
