@@ -190,7 +190,7 @@ public:
     using reference = window&;
 
     chain_windows(matrix& matrix, size_t kmer_size);
-    chain_windows(const to_windows&) = delete;
+    chain_windows(const chain_windows&) = delete;
     chain_windows(chain_windows&&) = delete;
     chain_windows& operator=(const chain_windows&) = delete;
     chain_windows& operator=(chain_windows&&) = delete;

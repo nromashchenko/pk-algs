@@ -13,16 +13,17 @@
 #include "brute_force.h"
 #include "ar.h"
 
-
-constexpr bool RUN_BB = false;
-constexpr bool RUN_DC = true;
-constexpr bool RUN_DCCW = false;
-
-
 struct run_params
 {
     size_t k;
     score_t omega;
+};
+
+struct flags
+{
+    bool run_bb;
+    bool run_dc;
+    bool run_dccw;
 };
 
 const std::vector<run_params> params =
@@ -84,6 +85,11 @@ const std::vector<run_params> params_default =
         { 10, 1.5 },
     };
 
+const std::vector<run_params> params_k12 =
+    {
+        { 12, 1.5 },
+    };
+
 
 //const size_t const_k = 5;
 const std::vector<run_params> params_one_k =
@@ -113,6 +119,7 @@ const std::vector<run_params> params_omega_1_even_k =
         { 6, 1.0},
         { 8, 1.0},
         { 10, 1.0},
+        { 12, 1.0},
     };
 
 const std::vector<run_params> params_omega_1_5 =
@@ -149,6 +156,15 @@ const std::vector<run_params> params_test =
         { 4, 1.5},
         { 6, 1.5},
         { 8, 1.5},
+    };
+
+const std::vector<run_params> params_omega_2_even_k =
+    {
+        { 6, 2.0 },
+        { 8, 2.0 },
+        { 10, 2.0 },
+        { 12, 2.0 },
+        //{ 14, 1.5},
     };
 
 void print_map(const map_t& map)
@@ -335,7 +351,7 @@ struct run_stats
 {
     algorithm alg;
     size_t num_kmers;
-    long time;
+    unsigned long time;
     size_t k;
     score_t omega;
     std::string node;
@@ -426,7 +442,7 @@ std::tuple<std::vector<phylo_kmer>, run_stats> run_bb(const window& window, size
     auto begin = std::chrono::steady_clock::now();
     bb.run(omega);
     auto end = std::chrono::steady_clock::now();
-    long time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    unsigned long time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
     const auto stats = run_stats{
                              algorithm::bb,
                              bb.get_num_kmers(),
@@ -445,7 +461,7 @@ std::tuple<std::vector<phylo_kmer>, run_stats> run_dc(const window& window, size
     auto begin = std::chrono::steady_clock::now();
     dc.run(omega);
     auto end = std::chrono::steady_clock::now();
-    long time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    unsigned long time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
     const auto stats = run_stats{
         algorithm::dc,
         dc.get_num_kmers(),
@@ -481,7 +497,7 @@ std::tuple<std::vector<phylo_kmer>, run_stats> run_dccw(std::vector<phylo_kmer>&
     auto begin = std::chrono::steady_clock::now();
     dccw.run(omega);
     auto end = std::chrono::steady_clock::now();
-    long time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    unsigned long time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
     prefixes = std::move(dccw.get_suffixes());
 
     const auto stats = run_stats{
@@ -495,7 +511,9 @@ std::tuple<std::vector<phylo_kmer>, run_stats> run_dccw(std::vector<phylo_kmer>&
     return { dccw.get_result(), stats };
 }
 
-void test_random(const std::vector<run_params>& parameters, size_t num_iter, const std::string& filename)
+void test_random(const flags& flags,
+                 const std::vector<run_params>& parameters,
+                 size_t num_iter, const std::string& filename)
 {
     const auto node_name = "Random" + std::to_string(num_iter);
 
@@ -519,23 +537,22 @@ void test_random(const std::vector<run_params>& parameters, size_t num_iter, con
             std::vector<phylo_kmer> prefixes;
 
             for (const auto& [prev, window, next] : chain_windows(matrix, k))
-            //for (const auto& window : to_windows(matrix, k))
             {
-                if (RUN_BB)
+                if (flags.run_bb)
                 {
                     const auto& [result, stat] = run_bb(window, k, omega, node_name);
                     stats.push_back(stat);
                     bb_result = result;
                 }
 
-                if (RUN_DC)
+                if (flags.run_dc)
                 {
                     const auto& [result, stat] = run_dc(window, k, omega, node_name);
                     stats.push_back(stat);
                     dc_result = result;
                 }
 
-                if (RUN_DCCW)
+                if (flags.run_dccw)
                 {
                     const auto& [result, stat] = run_dccw(prefixes, prev, window, next, k, omega, node_name);
                     stats.push_back(stat);
@@ -565,7 +582,10 @@ std::vector<std::string> get_ghost_ids(const std::string& filename)
     return result;
 }
 
-void test_data(const std::vector<run_params>& parameters, const std::string& input,
+
+
+void test_data(const flags& flags,
+               const std::vector<run_params>& parameters, const std::string& input,
                const std::string& ghost_ids_file, const std::string& output)
 {
     const auto ghost_ids = get_ghost_ids(ghost_ids_file);
@@ -606,21 +626,21 @@ void test_data(const std::vector<run_params>& parameters, const std::string& inp
             for (const auto& [prev, window, next] : chain_windows(matrix, k))
             //for (const auto& window : to_windows(matrix, k))
             {
-                if (RUN_BB)
+                if (flags.run_bb)
                 {
                     const auto& [result, stat] = run_bb(window, k, omega, node_name);
                     stats.push_back(stat);
                     bb_result = result;
                 }
 
-                if (RUN_DC)
+                if (flags.run_dc)
                 {
                     const auto& [result, stat] = run_dc(window, k, omega, node_name);
                     stats.push_back(stat);
                     dc_result = result;
                 }
 
-                if (RUN_DCCW)
+                if (flags.run_dccw)
                 {
                     const auto& [result, stat] = run_dccw(prefixes, prev, window, next, k, omega, node_name);
                     stats.push_back(stat);
@@ -652,27 +672,41 @@ int main(int argc, char** argv)
 
     //const auto parameters = params;
     //const auto parameters = params_test;
-    const auto parameters = params_default;
+    //const auto parameters = params_default;
+    //const auto parameters = params_k12;
+
     //const auto parameters = params_one_k;
     //const auto parameters = params_omega_1;
+    const auto parameters = params_omega_1_even_k;
     //const auto parameters = params_omega_1_5;
     //const auto parameters = params_omega_1_5_even_k;
     //const auto parameters = params_omega_0;
+    //const auto parameters = params_omega_2_even_k;
 
-    test_random(parameters, 1000, std::string(std::tmpnam(nullptr)) + ".csv");
+    flags alg_flags = { true, true, true };
 
-/*
     if (argc > 2)
     {
+        if (argc != 7)
+        {
+            std::cout << "Usage:\n\t"
+                << argv[0] << "\n\n or \n\n\t"
+                << argv[0] << " <RAxML-NG output file> <Ghost ID file> 0/1[run BB] 0/1[run DC] 0/1[run DCCW] OUTPUT_FILE" << std::endl;
+            return 1;
+        }
         std::string filename = argv[1];
         std::string ghost_ids_file = argv[2];
-        test_data(parameters, filename, ghost_ids_file, std::string(std::tmpnam(nullptr)) + ".csv");
+        bool run_bb = static_cast<bool>(std::stoi(argv[3]));
+        bool run_dc = static_cast<bool>(std::stoi(argv[4]));
+        bool run_dccw = static_cast<bool>(std::stoi(argv[5]));
+        std::string output_file = argv[6];
+
+        test_data({ run_bb, run_dc, run_dccw }, parameters, filename, ghost_ids_file, output_file);
     }
     else
     {
-        std::cout << "Usage:\n\t" << argv[0] << " FILENAME" << std::endl;
-        std::cout << "The filename should be the AR result of RAxML-ng." << std::endl;
-    }*/
+        test_random(alg_flags, parameters, 1000, std::string(std::tmpnam(nullptr)) + ".csv");
+    }
 
     return 0;
 }
