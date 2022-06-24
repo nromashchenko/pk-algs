@@ -162,7 +162,7 @@ bbe::bbe(const window& window, std::vector<column_data> order, size_t k)
         throw std::runtime_error("The size of the window is not k");
     }
 
-    _result_list.reserve(std::pow(sigma, k));
+    //_result_list.reserve(std::pow(sigma, k));
 
     preprocess();
 }
@@ -270,67 +270,3 @@ size_t baseline::get_num_kmers() const
 {
     return _result_list.size();
 }
-
-
-/*
-rappas::rappas(const matrix& matrix, size_t k)
-        : _matrix(matrix)
-        , _k(k)
-{
-    if (_matrix.empty())
-    {
-        throw std::runtime_error("The matrix is empty.");
-    }
-
-    if (_matrix[0].size() != k)
-    {
-        throw std::runtime_error("The size of the window is not k");
-    }
-}
-
-void rappas::run(score_t omega)
-{
-    if (!_matrix.is_sorted())
-    {
-        throw std::runtime_error("Matrix is not sorted.");
-    }
-
-    const score_t eps = std::pow((omega / 4), _k);
-    //bb(0, 0, 0, 0.0, eps);
-    for (size_t i = 0; i < sigma; ++i)
-    {
-        bb(i, 0, 0, 1.0, eps);
-    }
-}
-
-bb_return rappas::bb(size_t i, size_t j, code_t prefix, score_t score, score_t eps)
-{
-    // score = score + _matrix[i][j];
-    score = score * _matrix[i][j];
-    prefix = (prefix << 2) | _matrix.get_order()[i][j];
-
-    if (j == _k - 1)
-    {
-        map[prefix] = score;
-        return bb_return::GOOD_KMER;
-    }
-    else
-    {
-        for (size_t i2 = 0; i2 < sigma; ++i2)
-        {
-            if (score * _matrix[i2][j+1] <= eps)
-            {
-                break;
-            }
-            bb(i2, j + 1, prefix, score, eps);
-
-        }
-        return bb_return::GOOD_PRFIX;
-    }
-}
-
-const map_t& rappas::get_map()
-{
-    return map;
-}
-*/

@@ -6,6 +6,7 @@
 #include <chrono>
 #include <fstream>
 #include <iterator>
+#include <filesystem>
 
 #include "common.h"
 #include "dc.h"
@@ -106,9 +107,9 @@ const std::vector<run_params> params_one_k =
 const std::vector<run_params> params_omega_1 =
     {
         { 6, 1.0},
-        { 7, 1.0},
+        //{ 7, 1.0},
         { 8, 1.0},
-        { 9, 1.0},
+        //{ 9, 1.0},
         { 10, 1.0},
         //{ 11, 1.0},
         //{ 12, 1.0},
@@ -150,12 +151,12 @@ const std::vector<run_params> params_omega_0 =
 
 const std::vector<run_params> params_test =
     {
-        { 4, 1.0},
-        { 6, 1.0},
-        { 8, 1.0},
-        { 4, 1.5},
+        //{ 4, 1.0},
         { 6, 1.5},
-        { 8, 1.5},
+        //{ 8, 1.0},
+        //{ 4, 1.5},
+        //{ 6, 1.5},
+        //{ 8, 1.5},
     };
 
 const std::vector<run_params> params_omega_2_even_k =
@@ -676,8 +677,8 @@ int main(int argc, char** argv)
     //const auto parameters = params_k12;
 
     //const auto parameters = params_one_k;
-    //const auto parameters = params_omega_1;
-    const auto parameters = params_omega_1_even_k;
+    const auto parameters = params_omega_1;
+    //const auto parameters = params_omega_1_even_k;
     //const auto parameters = params_omega_1_5;
     //const auto parameters = params_omega_1_5_even_k;
     //const auto parameters = params_omega_0;
@@ -700,6 +701,12 @@ int main(int argc, char** argv)
         bool run_dc = static_cast<bool>(std::stoi(argv[4]));
         bool run_dccw = static_cast<bool>(std::stoi(argv[5]));
         std::string output_file = argv[6];
+
+        if (std::filesystem::exists(output_file))
+        {
+            std::cerr << "File exists: " << output_file << std::endl;
+            return 1;
+        }
 
         test_data({ run_bb, run_dc, run_dccw }, parameters, filename, ghost_ids_file, output_file);
     }
