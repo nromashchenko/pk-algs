@@ -2,7 +2,7 @@
 
 #include "bb.h"
 
-branch_and_bound::branch_and_bound(const window& window, size_t k)
+branch_and_bound::branch_and_bound(const window& window, size_t k, score_t omega)
         : _window(window)
         , _k(k)
         , _best_suffix_score()
@@ -17,7 +17,9 @@ branch_and_bound::branch_and_bound(const window& window, size_t k)
         throw std::runtime_error("The size of the window is not k");
     }
 
-    _result_list.reserve(std::pow(sigma, k));
+    _result_list.reserve(
+        static_cast<int>(std::pow((sigma / omega), k))
+    );
 
     preprocess();
 }

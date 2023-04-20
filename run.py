@@ -12,7 +12,7 @@ from typing import List
 
 TIME_BIN = "/usr/bin/time"
 XPAS_ALGS_BIN = "cmake-build-release/bin/xpas_algs"
-OUTPUT_DIR = "results-spire"
+OUTPUT_DIR = "revision-fig8"
 
 ALGS = [
     "bb",

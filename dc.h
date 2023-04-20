@@ -12,7 +12,7 @@ class divide_and_conquer
 {
     friend class dccw;
 public:
-    divide_and_conquer(const window& window, size_t k);
+    divide_and_conquer(const window& window, size_t k, score_t omega);
     void run(score_t omega);
 
     const map_t& get_map();
@@ -44,7 +44,8 @@ private:
 class dccw
 {
 public:
-    dccw(const window& window, std::vector<phylo_kmer>& prefixes, size_t k, score_t lookbehind, score_t lookahead);
+    dccw(const window& window, std::vector<phylo_kmer>& prefixes, size_t k, score_t lookbehind, score_t lookahead,
+         score_t omega);
     void run(score_t omega);
 
     const map_t& get_map();

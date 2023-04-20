@@ -7,7 +7,7 @@
 class branch_and_bound
 {
 public:
-    branch_and_bound(const window& window, size_t k);
+    branch_and_bound(const window& window, size_t k, score_t omega);
     void run(score_t omega);
     bb_return bb(size_t i, size_t j, code_t prefix, score_t score, score_t eps);
     const map_t& get_map();

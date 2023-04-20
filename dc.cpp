@@ -17,7 +17,7 @@ std::vector<phylo_kmer> as_column(const window& window, size_t j, score_t eps)
 
 
 
-divide_and_conquer::divide_and_conquer(const window& window, size_t k)
+divide_and_conquer::divide_and_conquer(const window& window, size_t k, score_t omega)
         : _window(window)
         , _k(k)
 {
@@ -25,7 +25,9 @@ divide_and_conquer::divide_and_conquer(const window& window, size_t k)
     const auto halfsize = size_t{ k / 2 };
     _prefix_size = (halfsize >= 1) ? halfsize : k;
 
-    _result_list.reserve(std::pow(sigma, k));
+    _result_list.reserve(
+        static_cast<int>(std::pow((sigma / omega), k))
+    );
 
     // preprocessing O(k): range product query
     preprocess();
@@ -149,18 +151,21 @@ size_t divide_and_conquer::get_num_kmers() const
     return _result_list.size();
 }
 
-dccw::dccw(const window& window, std::vector<phylo_kmer>& prefixes, size_t k, score_t lookbehind, score_t lookahead)
+dccw::dccw(const window& window, std::vector<phylo_kmer>& prefixes, size_t k, score_t lookbehind, score_t lookahead,
+           score_t omega)
     : _window(window)
     , _prefixes(prefixes)
     , _k(k)
     , _lookahead(lookahead)
     , _lookbehind(lookbehind)
-    , _dc(window, k)
+    , _dc(window, k, omega)
 {
     const auto halfsize = size_t{ k / 2 };
     _prefix_size = (halfsize >= 1) ? halfsize : k;
 
-    _result_list.reserve(std::pow(sigma, k));
+    _result_list.reserve(
+        static_cast<int>(std::pow((sigma / omega), k))
+    );
 
     _dc.preprocess();
 }

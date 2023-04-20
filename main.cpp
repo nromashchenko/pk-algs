@@ -265,7 +265,7 @@ void test_one(size_t k, bool print=true)
     for (const auto& window : to_windows(matrix, k))
     {
         //std::cout << "WINDOW: " << window.get_position() << std::endl;
-        branch_and_bound bb(window, k);
+        branch_and_bound bb(window, k, omega);
         bb.run(omega);
         if (print)
         {
@@ -291,7 +291,7 @@ void test_one(size_t k, bool print=true)
 
         assert_equal(bb.get_result(), bbe.get_result());*/
 
-        divide_and_conquer dc(window, k);
+        divide_and_conquer dc(window, k, omega);
         dc.run(omega);
         if (print)
         {
@@ -439,7 +439,7 @@ void print_returns(const std::vector<bb_stats>& stats, const std::string& filena
 std::tuple<std::vector<phylo_kmer>, run_stats> run_bb(const window& window, size_t k, float omega,
                                                             const std::string& node_name)
 {
-    branch_and_bound bb(window, k);
+    branch_and_bound bb(window, k, omega);
     auto begin = std::chrono::steady_clock::now();
     bb.run(omega);
     auto end = std::chrono::steady_clock::now();
@@ -458,7 +458,7 @@ std::tuple<std::vector<phylo_kmer>, run_stats> run_bb(const window& window, size
 std::tuple<std::vector<phylo_kmer>, run_stats> run_dc(const window& window, size_t k, float omega,
                                                       const std::string& node_name)
 {
-    divide_and_conquer dc(window, k);
+    divide_and_conquer dc(window, k, omega);
     auto begin = std::chrono::steady_clock::now();
     dc.run(omega);
     auto end = std::chrono::steady_clock::now();
@@ -494,7 +494,7 @@ std::tuple<std::vector<phylo_kmer>, run_stats> run_dccw(std::vector<phylo_kmer>&
         lookahead = next.range_product(k / 2, k - k / 2);
     }
 
-    dccw dccw(current, prefixes, k, lookbehind, lookahead);
+    dccw dccw(current, prefixes, k, lookbehind, lookahead, omega);
     auto begin = std::chrono::steady_clock::now();
     dccw.run(omega);
     auto end = std::chrono::steady_clock::now();
@@ -673,11 +673,11 @@ int main(int argc, char** argv)
 
     //const auto parameters = params;
     //const auto parameters = params_test;
-    //const auto parameters = params_default;
+    const auto parameters = params_default;
     //const auto parameters = params_k12;
 
     //const auto parameters = params_one_k;
-    const auto parameters = params_omega_1;
+    //const auto parameters = params_omega_1;
     //const auto parameters = params_omega_1_even_k;
     //const auto parameters = params_omega_1_5;
     //const auto parameters = params_omega_1_5_even_k;
